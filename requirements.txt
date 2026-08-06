@@ -2,9 +2,6 @@ fastapi
 uvicorn
 jinja2
 python-multipart
-python-telegram-bot
-sqlalchemy
-aiosqlite
-httpx
 websockets
-pydantic
+aiosqlite
+python-dotenv
