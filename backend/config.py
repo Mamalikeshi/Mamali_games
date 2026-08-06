@@ -1,0 +1,15 @@
+BOT_NAME = "Mamaligamebot"
+
+APP_NAME = "Mamali Games"
+
+COMMISSION_PERCENT = 3.0
+
+REFERRAL_PERCENT = 0.5
+
+TEST_MODE = True
+
+DATABASE_NAME = "mamali.db"
+
+DEFAULT_CURRENCY = "USDT"
+
+VERSION = "0.1.0"
