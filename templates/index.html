@@ -143,6 +143,15 @@ tg.ready();
 
 tg.expand();
 
+const user = tg.initDataUnsafe?.user;
+
+if(user){
+
+document.querySelector(".logo").innerHTML =
+"🎮 سلام " + user.first_name;
+
+}
+
 </script>
 
 </body>
