@@ -1,7 +1,2 @@
-fastapi
-uvicorn
-jinja2
-python-multipart
-websockets
-aiosqlite
-python-dotenv
+
+python-telegram-bot==22.3
