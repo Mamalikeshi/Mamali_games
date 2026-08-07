@@ -3,11 +3,10 @@ title: Mamali Games
 emoji: 🃏
 colorFrom: blue
 colorTo: green
-sdk: docker
-app_port: 7860
+sdk: static
 pinned: false
 ---
 
 # Mamali Games
 
-Telegram Mini App - Hokm 2 Player
+Telegram Mini App
