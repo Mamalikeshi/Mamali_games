@@ -20,4 +20,4 @@ jobs:
           huggingface_repo_id: Mamalikeshi/Mamali_games
           hf_token: ${{ secrets.HF_TOKEN }}
           repo_type: space
-          space_sdk: docker
+          space_sdk: gradio
