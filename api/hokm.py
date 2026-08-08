@@ -218,6 +218,33 @@ def play_card(
         "room_id": room_id,
         "state": game.get_state(),
     }
+@router.get("/rooms/{room_id}/hand/{user_id}")
+def get_player_hand(room_id: str, user_id: int):
+    game = games.get(room_id)
+
+    if game is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Game not found.",
+        )
+
+    player = game.get_player(user_id)
+
+    if player is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Player not found.",
+        )
+
+    return {
+        "success": True,
+        "room_id": room_id,
+        "user_id": user_id,
+        "hand": [
+            card.to_dict()
+            for card in player.hand
+        ],
+    }
 @router.get("/rooms/{room_id}")
 def get_room(room_id: str):
     room = rooms.get(room_id)
