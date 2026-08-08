@@ -1,35 +1,35 @@
-from dataclasses import dataclass, field
-
-from .card import Card
-
-
-@dataclass
 class Player:
-    user_id: int
-    username: str
+    def __init__(self, user_id: int, username: str):
+        self.user_id = user_id
+        self.username = username
 
-    hand: list[Card] = field(default_factory=list)
-
-    tricks: int = 0
-
-    is_ready: bool = False
-
-    hokm: bool = False
-
-    def receive_cards(self, cards: list[Card]):
-        self.hand.extend(cards)
+        self.hand = []
+        self.is_ready = False
+        self.is_hokm = False
+        self.tricks = 0
 
     def sort_hand(self):
-        self.hand.sort(key=lambda c: (c.suit, c.rank))
+        self.hand.sort(
+            key=lambda card: (
+                card.suit,
+                card.rank_value,
+            )
+        )
 
-    def play_card(self, index: int):
-        if index < 0 or index >= len(self.hand):
-            raise ValueError("Invalid card index")
+    def play_card(self, card_index: int):
+        if card_index < 0 or card_index >= len(self.hand):
+            return None
 
-        return self.hand.pop(index)
+        return self.hand.pop(card_index)
 
-    def reset(self):
-        self.hand.clear()
-        self.tricks = 0
-        self.is_ready = False
-        self.hokm = False
+    def to_dict(self):
+        return {
+            "user_id": self.user_id,
+            "username": self.username,
+            "is_ready": self.is_ready,
+            "is_hokm": self.is_hokm,
+            "hand": [
+                card.to_dict()
+                for card in self.hand
+            ],
+        }
