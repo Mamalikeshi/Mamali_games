@@ -147,6 +147,17 @@ class HokmGame:
         if winner_id is not None:
             self.state.set_winner(winner_id)
 
+       def get_scores(self):
+        return {
+            str(player.user_id): player.tricks
+            for player in self.room.players
+        }
+
+    def get_winner(self):
+        return self.state.winner
+
+    def is_finished(self):
+        return self.state.winner is not None
     def get_player(self, user_id: int) -> Player | None:
         return self.room.get_player(user_id)
 
