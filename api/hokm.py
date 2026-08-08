@@ -106,7 +106,42 @@ def ready_player(room_id: str, user_id: int):
         "game_started": game_started,
     }
 
+@router.post("/rooms/{room_id}/start")
+def start_game(room_id: str):
+    room = rooms.get(room_id)
 
+    if room is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Room not found.",
+        )
+
+    if len(room.players) != 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Exactly 2 players are required.",
+        )
+
+    if not room.both_ready():
+        raise HTTPException(
+            status_code=400,
+            detail="Both players must be ready.",
+        )
+
+    if room.is_started:
+        return {
+            "success": True,
+            "message": "Game already started.",
+            "room_id": room.room_id,
+        }
+
+    started = room.start()
+
+    return {
+        "success": started,
+        "room_id": room.room_id,
+        "game_started": room.is_started,
+    }
 @router.get("/rooms/{room_id}")
 def get_room(room_id: str):
     room = rooms.get(room_id)
