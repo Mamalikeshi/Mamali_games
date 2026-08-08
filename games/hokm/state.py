@@ -1,28 +1,16 @@
-from dataclasses import dataclass, field
-from typing import Optional
-
-from .card import Card
-
-
-@dataclass
 class GameState:
-    room_id: str
+    def __init__(self, room_id: str):
+        self.room_id = room_id
 
-    current_turn: Optional[int] = None
+        self.current_turn = None
+        self.trump = None
 
-    trump: Optional[str] = None
+        self.trick_cards = []
+        self.completed_tricks = 0
 
-    trick_cards: list[tuple[int, Card]] = field(default_factory=list)
+        self.trick_wins = {}
 
-    completed_tricks: int = 0
-
-    player_scores: dict[int, int] = field(default_factory=dict)
-
-    round_number: int = 1
-
-    game_over: bool = False
-
-    winner_id: Optional[int] = None
+        self.winner = None
 
     def set_turn(self, user_id: int):
         self.current_turn = user_id
@@ -30,34 +18,35 @@ class GameState:
     def set_trump(self, suit: str):
         self.trump = suit
 
-    def add_card_to_trick(self, user_id: int, card: Card):
-        self.trick_cards.append((user_id, card))
-
-    def clear_trick(self):
-        self.trick_cards.clear()
-
-    def add_trick_win(self, user_id: int):
-        self.player_scores[user_id] = (
-            self.player_scores.get(user_id, 0) + 1
+    def add_card_to_trick(self, user_id: int, card):
+        self.trick_cards.append(
+            (user_id, card)
         )
-        self.completed_tricks += 1
 
     def is_trick_complete(self) -> bool:
         return len(self.trick_cards) == 2
 
-    def set_winner(self, user_id: int):
-        self.winner_id = user_id
-        self.game_over = True
+    def add_trick_win(self, user_id: int):
+        self.completed_tricks += 1
 
-    def reset_trick(self):
-        self.clear_trick()
-        self.completed_tricks = 0
+        self.trick_wins[user_id] = (
+            self.trick_wins.get(user_id, 0) + 1
+        )
+
+    def clear_trick(self):
+        self.trick_cards = []
+
+    def set_winner(self, user_id: int):
+        self.winner = user_id
 
     def to_dict(self):
         return {
             "room_id": self.room_id,
             "current_turn": self.current_turn,
             "trump": self.trump,
+            "completed_tricks": self.completed_tricks,
+            "trick_wins": self.trick_wins,
+            "winner": self.winner,
             "trick_cards": [
                 {
                     "user_id": user_id,
@@ -65,9 +54,4 @@ class GameState:
                 }
                 for user_id, card in self.trick_cards
             ],
-            "completed_tricks": self.completed_tricks,
-            "player_scores": self.player_scores,
-            "round_number": self.round_number,
-            "game_over": self.game_over,
-            "winner_id": self.winner_id,
         }
