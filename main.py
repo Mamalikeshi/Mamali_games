@@ -1,36 +1,37 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from backend.database import init_database
-from api import router
-app = FastAPI(title="Mamali Games")
-app.include_router(router)
-templates = Jinja2Templates(directory="templates")
+from api.hokm import router as hokm_router
 
 
-@app.on_event("startup")
-async def startup():
+app = FastAPI(
+    title="Mamali Games",
+    version="0.1.0",
+)
 
-    await init_database()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+app.include_router(hokm_router)
 
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "title": "Mamali Games"
-        }
-    )
+
+@app.get("/")
+def home():
+    return {
+        "success": True,
+        "message": "Mamali Games API is running",
+    }
 
 
 @app.get("/health")
-async def health():
-
+def health():
     return {
         "status": "ok",
-        "version": "0.1"
     }
