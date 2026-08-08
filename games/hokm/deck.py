@@ -1,32 +1,42 @@
 import random
 
-from .card import Card, SUITS, RANKS
+from games.hokm.card import Card
 
 
 class Deck:
     def __init__(self):
-        self.cards = [
-            Card(suit, rank)
-            for suit in SUITS
-            for rank in RANKS
-        ]
+        self.cards = []
+
+        for suit in Card.SUITS:
+            for rank in Card.RANKS:
+                self.cards.append(
+                    Card(suit, rank)
+                )
 
     def shuffle(self):
         random.shuffle(self.cards)
 
-    def deal(self, players=2, cards_per_player=13):
-        if len(self.cards) < players * cards_per_player:
-            raise ValueError("Not enough cards.")
+    def deal(self, players, cards_each=13):
+        if len(players) != 2:
+            raise ValueError(
+                "Hokm requires exactly 2 players."
+            )
 
-        hands = []
+        required_cards = len(players) * cards_each
 
-        for _ in range(players):
-            hand = []
-            for _ in range(cards_per_player):
-                hand.append(self.cards.pop())
-            hands.append(hand)
+        if len(self.cards) < required_cards:
+            raise ValueError(
+                "Not enough cards in deck."
+            )
 
-        return hands
+        for player in players:
+            player.hand = []
 
-    def remaining(self):
-        return len(self.cards)
+        for _ in range(cards_each):
+            for player in players:
+                player.hand.append(
+                    self.cards.pop()
+                )
+
+        for player in players:
+            player.sort_hand()
