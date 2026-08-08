@@ -285,6 +285,23 @@ def get_turn(room_id: str):
             for user_id, card in game.state.trick_cards
         ],
     }
+@router.get("/rooms/{room_id}/score")
+def get_score(room_id: str):
+    game = games.get(room_id)
+
+    if game is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Game not found.",
+        )
+
+    return {
+        "success": True,
+        "room_id": room_id,
+        "scores": game.get_scores(),
+        "winner": game.get_winner(),
+        "game_finished": game.is_finished(),
+    }
 @router.get("/rooms/{room_id}")
 def get_room(room_id: str):
     room = rooms.get(room_id)
