@@ -3,12 +3,12 @@ from pydantic import BaseModel
 
 from games.hokm.player import Player
 from games.hokm.room import Room
-
+from games.hokm.game import HokmGame
 
 router = APIRouter(prefix="/api/hokm", tags=["Hokm"])
 
 rooms: dict[str, Room] = {}
-
+games: dict[str, HokmGame] = {}
 
 class CreateRoomRequest(BaseModel):
     user_id: int
@@ -133,15 +133,24 @@ def start_game(room_id: str):
             "success": True,
             "message": "Game already started.",
             "room_id": room.room_id,
-        }
+        game = HokmGame(room)
 
-    started = room.start()
+started = game.start_game()
 
-    return {
-        "success": started,
-        "room_id": room.room_id,
-        "game_started": room.is_started,
-    }
+if not started:
+    raise HTTPException(
+        status_code=400,
+        detail="Could not start Hokm game.",
+    )
+
+games[room_id] = game
+
+return {
+    "success": True,
+    "room_id": room.room_id,
+    "game_started": True,
+    "current_turn": game.state.current_turn,
+}
 @router.get("/rooms/{room_id}")
 def get_room(room_id: str):
     room = rooms.get(room_id)
