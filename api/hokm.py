@@ -151,6 +151,73 @@ return {
     "game_started": True,
     "current_turn": game.state.current_turn,
 }
+class TrumpRequest(BaseModel):
+    user_id: int
+    suit: str
+
+
+class PlayCardRequest(BaseModel):
+    user_id: int
+    card_index: int
+
+
+@router.post("/rooms/{room_id}/trump")
+def choose_trump(room_id: str, data: TrumpRequest):
+    game = games.get(room_id)
+
+    if game is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Game not found.",
+        )
+
+    success = game.choose_trump(
+        data.user_id,
+        data.suit,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot choose this trump.",
+        )
+
+    return {
+        "success": True,
+        "room_id": room_id,
+        "trump": data.suit,
+    }
+
+
+@router.post("/rooms/{room_id}/play")
+def play_card(
+    room_id: str,
+    data: PlayCardRequest,
+):
+    game = games.get(room_id)
+
+    if game is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Game not found.",
+        )
+
+    success = game.play_card(
+        data.user_id,
+        data.card_index,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot play this card.",
+        )
+
+    return {
+        "success": True,
+        "room_id": room_id,
+        "state": game.get_state(),
+    }
 @router.get("/rooms/{room_id}")
 def get_room(room_id: str):
     room = rooms.get(room_id)
