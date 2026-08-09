@@ -67,11 +67,23 @@ class HokmGame:
         if player is None:
             return False
 
-        if card_index < 0 or card_index >= len(player.hand):
+                if card_index < 0 or card_index >= len(player.hand):
             return False
 
-        card = player.hand.pop(card_index)
+        card = player.hand[card_index]
 
+        if self.state.trick_cards:
+            _, first_card = self.state.trick_cards[0]
+
+            has_lead_suit = any(
+                hand_card.suit == first_card.suit
+                for hand_card in player.hand
+            )
+
+            if has_lead_suit and card.suit != first_card.suit:
+                return False
+
+        player.hand.pop(card_index)
         self.state.add_card_to_trick(
             user_id,
             card,
