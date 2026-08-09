@@ -9,9 +9,7 @@ class Deck:
 
         for suit in Card.SUITS:
             for rank in Card.RANKS:
-                self.cards.append(
-                    Card(suit, rank)
-                )
+                self.cards.append(Card(suit, rank))
 
     def shuffle(self):
         random.shuffle(self.cards)
@@ -31,6 +29,28 @@ class Deck:
 
         for player in players:
             player.hand = []
+
+        for _ in range(cards_each):
+            for player in players:
+                player.hand.append(
+                    self.cards.pop()
+                )
+
+        for player in players:
+            player.sort_hand()
+
+    def deal_additional(self, players, cards_each):
+        if len(players) != 2:
+            raise ValueError(
+                "Hokm requires exactly 2 players."
+            )
+
+        required_cards = len(players) * cards_each
+
+        if len(self.cards) < required_cards:
+            raise ValueError(
+                "Not enough cards in deck."
+            )
 
         for _ in range(cards_each):
             for player in players:
