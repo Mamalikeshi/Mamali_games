@@ -1,9 +1,10 @@
-from .card import Card
-from .deck import Deck
-from .player import Player
-from .room import Room
-from .state import GameState
-from .game import HokmGame
+from games.hokm.card import Card
+from games.hokm.deck import Deck
+from games.hokm.player import Player
+from games.hokm.room import Room
+from games.hokm.state import GameState
+from games.hokm.rules import HokmRules
+from games.hokm.game import HokmGame
 
 __all__ = [
     "Card",
@@ -11,5 +12,6 @@ __all__ = [
     "Player",
     "Room",
     "GameState",
+    "HokmRules",
     "HokmGame",
 ]
