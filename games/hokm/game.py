@@ -67,7 +67,7 @@ class HokmGame:
         if player is None:
             return False
 
-                if card_index < 0 or card_index >= len(player.hand):
+        if card_index < 0 or card_index >= len(player.hand):
             return False
 
         card = player.hand[card_index]
@@ -84,6 +84,7 @@ class HokmGame:
                 return False
 
         player.hand.pop(card_index)
+
         self.state.add_card_to_trick(
             user_id,
             card,
