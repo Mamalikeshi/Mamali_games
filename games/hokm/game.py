@@ -106,9 +106,10 @@ class HokmGame:
                 self.state.set_turn(winner)
 
         else:
-            for player in self.room.players:
-                if player.user_id != user_id:
-                    self.state.set_turn(player.user_id)
+            for next_player in self.room.players:
+                if next_player.user_id != user_id:
+                    self.state.set_turn(next_player.user_id)
+                    break
 
         return True
 
@@ -134,8 +135,8 @@ class HokmGame:
         return first_user
 
     def _check_game_finished(self):
-        for player in self.room.players:
-            if len(player.hand) == 0:
+        for user_id, wins in self.state.trick_wins.items():
+            if wins >= 7:
                 return True
 
         return False
