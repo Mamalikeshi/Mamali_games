@@ -1,3 +1,4 @@
+from games.hokm.card import Card
 from games.hokm.room import Room
 from games.hokm.player import Player
 from games.hokm.game import HokmGame
@@ -42,7 +43,22 @@ def test_hokm_game_flow():
 
     assert game.state.trump == "hearts"
 
+    first_card = first_player.hand[0]
+
     assert game.play_card(
         first_player.user_id,
         0,
     )
+
+    second_player = room.players[1]
+
+    assert game.state.current_turn == second_player.user_id
+
+    second_card = second_player.hand[0]
+
+    assert game.play_card(
+        second_player.user_id,
+        0,
+    )
+
+    assert game.state.completed_tricks == 1
