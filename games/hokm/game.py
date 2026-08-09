@@ -7,6 +7,7 @@ class HokmGame:
     def __init__(self, room):
         self.room = room
         self.state = GameState(room.room_id)
+        self.deck = None
 
     def get_player(self, user_id: int):
         for player in self.room.players:
@@ -24,18 +25,28 @@ class HokmGame:
 
         self.room.start()
 
-        deck = Deck()
-        deck.shuffle()
-        deck.deal(self.room.players, 13)
+        self.deck = Deck()
+        self.deck.shuffle()
 
-        first_player = self.room.players[0]
+        self.deck.deal(self.room.players, 5)
 
-        self.state.set_turn(first_player.user_id)
+        hokm_player = self.room.players[0]
+        hokm_player.is_hokm = True
+
+        self.state.set_turn(hokm_player.user_id)
 
         return True
 
     def choose_trump(self, user_id: int, suit: str):
         if self.state.trump is not None:
+            return False
+
+        player = self.get_player(user_id)
+
+        if player is None:
+            return False
+
+        if not player.is_hokm:
             return False
 
         if user_id != self.state.current_turn:
@@ -52,6 +63,11 @@ class HokmGame:
             return False
 
         self.state.set_trump(suit)
+
+        self.deck.deal_additional(
+            self.room.players,
+            8,
+        )
 
         return True
 
