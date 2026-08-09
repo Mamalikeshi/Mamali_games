@@ -1,4 +1,5 @@
 from games.hokm.state import GameState
+from games.hokm.deck import Deck
 from games.hokm.player import Player
 
 
@@ -14,7 +15,7 @@ class HokmGame:
 
         return None
 
-    def start_game(self):
+        def start_game(self):
         if len(self.room.players) != 2:
             return False
 
@@ -22,6 +23,10 @@ class HokmGame:
             return False
 
         self.room.start()
+
+        deck = Deck()
+        deck.shuffle()
+        deck.deal(self.room.players, 13)
 
         first_player = self.room.players[0]
 
