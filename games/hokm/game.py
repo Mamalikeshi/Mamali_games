@@ -15,7 +15,7 @@ class HokmGame:
 
         return None
 
-        def start_game(self):
+           def start_game(self):
         if len(self.room.players) != 2:
             return False
 
@@ -32,7 +32,7 @@ class HokmGame:
 
         self.state.set_turn(first_player.user_id)
 
-        return True
+        return True 
 
     def choose_trump(self, user_id: int, suit: str):
         if self.state.trump is not None:
