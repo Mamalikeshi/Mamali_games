@@ -1,4 +1,3 @@
-from games.hokm.card import Card
 from games.hokm.room import Room
 from games.hokm.player import Player
 from games.hokm.game import HokmGame
@@ -27,37 +26,51 @@ def test_hokm_game_flow():
 
     game = HokmGame(room)
 
+    # Start game: each player receives 5 cards.
     assert game.start_game()
 
     assert room.is_started
 
-    assert len(player1.hand) == 13
-    assert len(player2.hand) == 13
+    assert len(player1.hand) == 5
+    assert len(player2.hand) == 5
 
-    first_player = room.players[0]
+    # The first player is the Hokm player.
+    hokm_player = room.players[0]
+    other_player = room.players[1]
+
+    assert hokm_player.is_hokm
+    assert not other_player.is_hokm
+
+    # Only the Hokm player can choose the trump.
+    assert game.choose_trump(
+        other_player.user_id,
+        "hearts",
+    ) is False
 
     assert game.choose_trump(
-        first_player.user_id,
+        hokm_player.user_id,
         "hearts",
     )
 
     assert game.state.trump == "hearts"
 
-    first_card = first_player.hand[0]
+    # After choosing trump, both players receive
+    # the remaining 8 cards.
+    assert len(player1.hand) == 13
+    assert len(player2.hand) == 13
+
+    # The Hokm player starts the first trick.
+    assert game.state.current_turn == hokm_player.user_id
 
     assert game.play_card(
-        first_player.user_id,
+        hokm_player.user_id,
         0,
     )
 
-    second_player = room.players[1]
-
-    assert game.state.current_turn == second_player.user_id
-
-    second_card = second_player.hand[0]
+    assert game.state.current_turn == other_player.user_id
 
     assert game.play_card(
-        second_player.user_id,
+        other_player.user_id,
         0,
     )
 
