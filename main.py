@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.hokm import router as hokm_router
 from api.chahar_barg import router as chahar_barg_router
+from api.domino import router as domino_router
 
 app = FastAPI(
     title="Mamali Games",
@@ -19,6 +20,7 @@ app.add_middleware(
 
 app.include_router(hokm_router)
 app.include_router(chahar_barg_router)
+app.include_router(domino_router)
 
 
 @app.get("/")
