@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>چهاربرگ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body{
+    margin:0;
+    background:#151515;
+    color:white;
+    font-family:tahoma;
+    text-align:center;
+    padding-bottom:30px;
+  }
+  h1{ margin-top:20px; font-size:22px; }
+  .box{
+    max-width:400px;
+    margin:15px auto;
+    padding:15px;
+  }
+  .button{
+    width:250px;
+    margin:10px auto;
+    padding:14px;
+    background:#2f80ed;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:18px;
+    border:none;
+    color:white;
+  }
+  .button:disabled{
+    background:#444;
+  }
+  .back{
+    background:#333;
+    width:150px;
+    font-size:15px;
+    padding:10px;
+  }
+  input{
+    width:220px;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+    text-align:center;
+    margin:8px auto;
+  }
+  .status{
+    color:#9be08b;
+    margin:10px;
+    font-size:14px;
+  }
+  .table{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:15px auto;
+    min-height:70px;
+  }
+  .hand{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:15px auto;
+  }
+  .card{
+    width:46px;
+    height:64px;
+    background:white;
+    color:#151515;
+    border-radius:6px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:bold;
+    font-size:14px;
+  }
+  .card.playable{
+    border:3px solid #2f80ed;
+    cursor:pointer;
+  }
+  .scoreboard{
+    margin:10px;
+    font-size:16px;
+  }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<h1>🀄 چهاربرگ (دونفره)</h1>
+
+<div id="screen-menu" class="box">
+  <button class="button" onclick="createRoom()">ساخت اتاق جدید</button>
+  <div>
+    <input id="join-room-id" placeholder="کد اتاق را وارد کن">
+    <br>
+    <button class="button" onclick="joinRoom()">پیوستن به اتاق</button>
+  </div>
+  <div id="menu-status" class="status"></div>
+</div>
+
+<div id="screen-waiting" class="box hidden">
+  <p>کد اتاق: <b id="waiting-room-id"></b></p>
+  <p id="waiting-status">در انتظار بازیکن دوم...</p>
+  <button class="button" id="ready-btn" onclick="setReady()">آماده‌ام</button>
+</div>
+
+<div id="screen-game" class="box hidden">
+  <div class="scoreboard" id="scoreboard"></div>
+  <p id="turn-status"></p>
+  <p>زمین بازی:</p>
+  <div class="table" id="table-cards"></div>
+  <p>دست شما:</p>
+  <div class="hand" id="hand-cards"></div>
+</div>
+
+<div class="box">
+  <button class="button back" onclick="goBack()">🔙 بازگشت به منو</button>
+</div>
+
+<script>
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+let user = tg.initDataUnsafe && tg.initDataUnsafe.user
+  ? tg.initDataUnsafe.user
+  : { id: Math.floor(Math.random() * 1000000), username: "guest" };
+
+let userId = user.id;
+let username = user.username || user.first_name || ("player" + userId);
+
+let currentRoomId = null;
+let pollTimer = null;
+
+function goBack(){
+  window.location.href = "index.html";
+}
+
+async function apiPost(path, body){
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  return res.json();
+}
+
+async function apiGet(path){
+  const res = await fetch(path);
+  return res.json();
+}
+
+async function createRoom(){
+  const data = await apiPost("/api/chahar_barg/rooms", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = data.room_id;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "خطا در ساخت اتاق";
+  }
+}
+
+async function joinRoom(){
+  const roomId = document.getElementById("join-room-id").value.trim();
+  if (!roomId){
+    document.getElementById("menu-status").innerText = "کد اتاق را وارد کن";
+    return;
+  }
+  const data = await apiPost("/api/chahar_barg/rooms/" + roomId + "/join", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = roomId;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "اتاق پیدا نشد یا پر است";
+  }
+}
+
+function showWaitingScreen(){
+  document.getElementById("screen-menu").classList.add("hidden");
+  document.getElementById("screen-waiting").classList.remove("hidden");
+  document.getElementById("waiting-room-id").innerText = currentRoomId;
+  startWaitingPoll();
+}
+
+async function setReady(){
+  document.getElementById("ready-btn").disabled = true;
+  await apiPost("/api/chahar_barg/rooms/" + currentRoomId + "/ready/" + userId, {});
+}
+
+function startWaitingPoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const data = await apiGet("/api/chahar_barg/rooms/" + currentRoomId);
+    if (data.is_started){
+      clearInterval(pollTimer);
+      showGameScreen();
+      return;
+    }
+    document.getElementById("waiting-status").innerText =
+      "بازیکنان: " + data.players.length + " / 2";
+  }, 2000);
+}
+
+function showGameScreen(){
+  document.getElementById("screen-waiting").classList.add("hidden");
+  document.getElementById("screen-game").classList.remove("hidden");
+  startGamePoll();
+}
+
+function startGamePoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  refreshGame();
+  pollTimer = setInterval(refreshGame, 2000);
+}
+
+const SUIT_ICON = {
+  hearts: "♥️",
+  diamonds: "♦️",
+  clubs: "♣️",
+  spades: "♠️",
+};
+
+async function refreshGame(){
+  const gameData = await apiGet("/api/chahar_barg/rooms/" + currentRoomId + "/game");
+  if (!gameData.success) return;
+
+  const state = gameData.game.state;
+  const handData = await apiGet("/api/chahar_barg/rooms/" + currentRoomId + "/hand/" + userId);
+
+  renderScoreboard(gameData.game);
+  renderTurn(state);
+  renderTable(state.table_cards);
+  renderHand(handData.hand, state.current_turn === userId);
+
+  if (state.game_over){
+    clearInterval(pollTimer);
+    showFinalScore();
+  }
+}
+
+function renderScoreboard(game){
+  document.getElementById("scoreboard").innerText =
+    game.player_a.username + ": " + game.player_a.captured_count + " کارت جمع‌شده  |  " +
+    game.player_b.username + ": " + game.player_b.captured_count + " کارت جمع‌شده";
+}
+
+function renderTurn(state){
+  document.getElementById("turn-status").innerText =
+    state.current_turn === userId ? "نوبت شماست 🎯" : "منتظر حریف...";
+}
+
+function renderTable(cards){
+  const el = document.getElementById("table-cards");
+  el.innerHTML = "";
+  cards.forEach(card => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerText = card.rank + SUIT_ICON[card.suit];
+    el.appendChild(div);
+  });
+}
+
+function renderHand(cards, isMyTurn){
+  const el = document.getElementById("hand-cards");
+  el.innerHTML = "";
+  cards.forEach((card, index) => {
+    const div = document.createElement("div");
+    div.className = "card" + (isMyTurn ? " playable" : "");
+    div.innerText = card.rank + SUIT_ICON[card.suit];
+    if (isMyTurn){
+      div.onclick = () => playCard(index);
+    }
+    el.appendChild(div);
+  });
+}
+
+async function playCard(index){
+  await apiPost("/api/chahar_barg/rooms/" + currentRoomId + "/play", {
+    user_id: userId,
+    card_index: index,
+  });
+  refreshGame();
+}
+
+async function showFinalScore(){
+  const data = await apiGet("/api/chahar_barg/rooms/" + currentRoomId + "/score");
+  document.getElementById("turn-status").innerText =
+    "بازی تمام شد! " +
+    (data.winner ? "برنده: " + data.winner : "مساوی شد");
+}
+</script>
+</body>
+</html>
