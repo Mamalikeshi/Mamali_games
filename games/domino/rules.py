@@ -9,6 +9,10 @@ TILES_PER_PLAYER = 7
 MATCH_TARGET_SCORE = 101
 
 
+def hand_has_double(hand: list[Tile]) -> bool:
+    return any(tile.is_double for tile in hand)
+
+
 def find_highest_double(hands: dict[int, list[Tile]]) -> int | None:
     """
     بین دست همه‌ی بازیکنان، صاحب بالاترین دوبل (جفت) رو پیدا می‌کنه.
