@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دومینو</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body{
+    margin:0;
+    background:#151515;
+    color:white;
+    font-family:tahoma;
+    text-align:center;
+    padding-bottom:30px;
+  }
+  h1{ margin-top:20px; font-size:22px; }
+  .box{
+    max-width:420px;
+    margin:15px auto;
+    padding:15px;
+  }
+  .button{
+    width:250px;
+    margin:10px auto;
+    padding:14px;
+    background:#2f80ed;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:18px;
+    border:none;
+    color:white;
+    display:block;
+  }
+  .button:disabled{
+    background:#444;
+  }
+  .back{
+    background:#333;
+    width:150px;
+    font-size:15px;
+    padding:10px;
+  }
+  input{
+    width:220px;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+    text-align:center;
+    margin:8px auto;
+  }
+  .status{
+    color:#9be08b;
+    margin:10px;
+    font-size:14px;
+  }
+  .board{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:4px;
+    margin:15px auto;
+    min-height:60px;
+    max-width:400px;
+  }
+  .hand{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:15px auto;
+  }
+  .tile{
+    display:flex;
+    background:#f2f2f2;
+    border-radius:6px;
+    border:2px solid #333;
+    overflow:hidden;
+  }
+  .tile.horizontal{
+    width:56px;
+    height:28px;
+    flex-direction:row;
+  }
+  .tile.vertical{
+    width:28px;
+    height:56px;
+    flex-direction:column;
+  }
+  .tile-half{
+    flex:1;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    padding:2px;
+    box-sizing:border-box;
+    position:relative;
+  }
+  .tile.horizontal .tile-half:first-child{
+    border-left:1.5px solid #333;
+  }
+  .tile.vertical .tile-half:first-child{
+    border-top:1.5px solid #333;
+  }
+  .pip{
+    width:5px;
+    height:5px;
+    border-radius:50%;
+    margin:auto;
+  }
+  .hand .tile{
+    width:56px;
+    height:96px;
+    flex-direction:column;
+    cursor:default;
+  }
+  .hand .tile .tile-half{
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    padding:4px;
+  }
+  .hand .tile .pip{
+    width:8px;
+    height:8px;
+  }
+  .hand .tile.playable{
+    border-color:#2f80ed;
+    box-shadow:0 0 6px #2f80ed;
+    cursor:pointer;
+  }
+  .hand .tile.forced{
+    border-color:#f2c94c;
+    box-shadow:0 0 8px #f2c94c;
+  }
+  .side-picker{
+    display:none;
+    gap:10px;
+    justify-content:center;
+    margin:10px;
+  }
+  .side-btn{
+    padding:10px 16px;
+    background:#2f80ed;
+    border:none;
+    border-radius:8px;
+    color:white;
+    font-size:15px;
+  }
+  .scoreboard{
+    margin:10px;
+    font-size:16px;
+  }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<h1>🁫 دومینو (دونفره)</h1>
+
+<div id="screen-menu" class="box">
+  <button class="button" onclick="createRoom()">ساخت اتاق جدید</button>
+  <div>
+    <input id="join-room-id" placeholder="کد اتاق را وارد کن">
+    <br>
+    <button class="button" onclick="joinRoom()">پیوستن به اتاق</button>
+  </div>
+  <div id="menu-status" class="status"></div>
+</div>
+
+<div id="screen-waiting" class="box hidden">
+  <p>کد اتاق: <b id="waiting-room-id"></b></p>
+  <p id="waiting-status">در انتظار بازیکن دوم...</p>
+  <button class="button" id="ready-btn" onclick="setReady()">آماده‌ام</button>
+</div>
+
+<div id="screen-game" class="box hidden">
+  <div class="scoreboard" id="scoreboard"></div>
+  <p id="turn-status"></p>
+  <p id="boneyard-status"></p>
+  <p>زمین بازی:</p>
+  <div class="board" id="board-tiles"></div>
+
+  <div class="side-picker" id="side-picker">
+    <button class="side-btn" onclick="confirmPlay('left')">سمت چپ</button>
+    <button class="side-btn" onclick="confirmPlay('right')">سمت راست</button>
+  </div>
+
+  <button class="button" id="draw-btn" onclick="drawTile()" style="display:none;">
+    کشیدن از بیرون
+  </button>
+
+  <p>دست شما:</p>
+  <div class="hand" id="hand-tiles"></div>
+</div>
+
+<div class="box">
+  <button class="button back" onclick="goBack()">🔙 بازگشت به منو</button>
+</div>
+
+<script>
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+let user = tg.initDataUnsafe && tg.initDataUnsafe.user
+  ? tg.initDataUnsafe.user
+  : { id: Math.floor(Math.random() * 1000000), username: "guest" };
+
+let userId = user.id;
+let username = user.username || user.first_name || ("player" + userId);
+
+let currentRoomId = null;
+let pollTimer = null;
+let selectedTileIndex = null;
+let currentValidSides = [];
+
+const PIP_COLORS = {
+  0: null,
+  1: "#7ec8e3",
+  2: "#4caf50",
+  3: "#e53935",
+  4: "#757575",
+  5: "#1565c0",
+  6: "#fbc02d",
+};
+
+// موقعیت نقطه‌ها تو گرید ۳x۳ برای هر عدد (مثل دومینوی واقعی)
+const PIP_LAYOUTS = {
+  0: [],
+  1: [5],
+  2: [1, 9],
+  3: [1, 5, 9],
+  4: [1, 3, 7, 9],
+  5: [1, 3, 5, 7, 9],
+  6: [1, 3, 4, 6, 7, 9],
+};
+
+function goBack(){
+  window.location.href = "index.html";
+}
+
+function buildTileHalf(value){
+  const half = document.createElement("div");
+  half.className = "tile-half";
+  const positions = PIP_LAYOUTS[value] || [];
+  for (let cell = 1; cell <= 9; cell++){
+    const dot = document.createElement("div");
+    if (positions.includes(cell)){
+      dot.className = "pip";
+      dot.style.background = PIP_COLORS[value];
+    }
+    half.appendChild(dot);
+  }
+  return half;
+}
+
+function buildTileElement(tile, orientation){
+  const el = document.createElement("div");
+  el.className = "tile " + orientation;
+  el.appendChild(buildTileHalf(tile.left));
+  el.appendChild(buildTileHalf(tile.right));
+  return el;
+}
+
+async function apiPost(path, body){
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  return res.json();
+}
+
+async function apiGet(path){
+  const res = await fetch(path);
+  return res.json();
+}
+
+async function createRoom(){
+  const data = await apiPost("/api/domino/rooms", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = data.room_id;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "خطا در ساخت اتاق";
+  }
+}
+
+async function joinRoom(){
+  const roomId = document.getElementById("join-room-id").value.trim();
+  if (!roomId){
+    document.getElementById("menu-status").innerText = "کد اتاق را وارد کن";
+    return;
+  }
+  const data = await apiPost("/api/domino/rooms/" + roomId + "/join", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = roomId;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "اتاق پیدا نشد یا پر است";
+  }
+}
+
+function showWaitingScreen(){
+  document.getElementById("screen-menu").classList.add("hidden");
+  document.getElementById("screen-waiting").classList.remove("hidden");
+  document.getElementById("waiting-room-id").innerText = currentRoomId;
+  startWaitingPoll();
+}
+
+async function setReady(){
+  document.getElementById("ready-btn").disabled = true;
+  await apiPost("/api/domino/rooms/" + currentRoomId + "/ready/" + userId, {});
+}
+
+function startWaitingPoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const data = await apiGet("/api/domino/rooms/" + currentRoomId);
+    if (data.is_started){
+      clearInterval(pollTimer);
+      showGameScreen();
+      return;
+    }
+    document.getElementById("waiting-status").innerText =
+      "بازیکنان: " + data.players.length + " / 2";
+  }, 2000);
+}
+
+function showGameScreen(){
+  document.getElementById("screen-waiting").classList.add("hidden");
+  document.getElementById("screen-game").classList.remove("hidden");
+  startGamePoll();
+}
+
+function startGamePoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  refreshGame();
+  pollTimer = setInterval(refreshGame, 2000);
+}
+
+async function refreshGame(){
+  const gameData = await apiGet("/api/domino/rooms/" + currentRoomId + "/game");
+  if (!gameData.success) return;
+
+  const game = gameData.game;
+  const state = game.state;
+  const handData = await apiGet("/api/domino/rooms/" + currentRoomId + "/hand/" + userId);
+
+  renderScoreboard(game);
+  renderTurn(state, game);
+  renderBoard(state.board);
+  renderHand(handData.hand, state, game);
+  renderDrawButton(handData.hand, state, game);
+
+  if (game.match_finished){
+    clearInterval(pollTimer);
+    showFinalScore(game);
+  }
+}
+
+function renderScoreboard(game){
+  const scoreA = game.total_score[game.player_a.user_id] || 0;
+  const scoreB = game.total_score[game.player_b.user_id] || 0;
+  document.getElementById("scoreboard").innerText =
+    game.player_a.username + ": " + scoreA + " امتیاز  |  " +
+    game.player_b.username + ": " + scoreB + " امتیاز" +
+    "  (دست " + game.round_number + " از ۱۰۱)";
+  document.getElementById("boneyard-status").innerText =
+    "مهره‌های باقی‌مونده بیرون: " + game.boneyard_remaining;
+}
+
+function renderTurn(state, game){
+  if (game.match_finished){
+    document.getElementById("turn-status").innerText = "بازی تمام شد!";
+    return;
+  }
+  document.getElementById("turn-status").innerText =
+    state.current_turn === userId ? "نوبت شماست 🎯" : "منتظر حریف...";
+}
+
+function renderBoard(board){
+  const el = document.getElementById("board-tiles");
+  el.innerHTML = "";
+  board.forEach(tile => {
+    el.appendChild(buildTileElement(tile, "horizontal"));
+  });
+}
+
+function tileValidSides(tile, leftEnd, rightEnd){
+  if (leftEnd === null && rightEnd === null) return ["left"];
+  const sides = [];
+  if (tile.left === leftEnd || tile.right === leftEnd) sides.push("left");
+  if (tile.left === rightEnd || tile.right === rightEnd) sides.push("right");
+  return sides;
+}
+
+function renderHand(cards, state, game){
+  const el = document.getElementById("hand-tiles");
+  el.innerHTML = "";
+  const isMyTurn = state.current_turn === userId && !game.match_finished;
+  const forcedIndex = game.pending_forced_tile_index
+    ? game.pending_forced_tile_index[userId]
+    : null;
+
+  cards.forEach((tile, index) => {
+    const sides = tileValidSides(tile, state.left_end, state.right_end);
+    const isPlayable = isMyTurn && sides.length > 0;
+    const isForced = forcedIndex !== null && forcedIndex === index;
+
+    const el2 = buildTileElement(tile, "vertical");
+    let cls = "tile vertical";
+    if (isPlayable) cls += " playable";
+    if (isForced) cls += " forced";
+    el2.className = cls;
+
+    if (isPlayable){
+      el2.onclick = () => selectTile(index, tile, sides);
+    }
+    el.appendChild(el2);
+  });
+}
+
+function renderDrawButton(cards, state, game){
+  const btn = document.getElementById("draw-btn");
+  const isMyTurn = state.current_turn === userId && !game.match_finished;
+  const hasPlayable = cards.some(tile =>
+    tileValidSides(tile, state.left_end, state.right_end).length > 0
+  );
+  btn.style.display = (isMyTurn && !hasPlayable) ? "block" : "none";
+}
+
+function selectTile(index, tile, sides){
+  selectedTileIndex = index;
+  currentValidSides = sides;
+
+  if (sides.length === 1){
+    confirmPlay(sides[0]);
+  } else {
+    document.getElementById("side-picker").style.display = "flex";
+  }
+}
+
+async function confirmPlay(side){
+  document.getElementById("side-picker").style.display = "none";
+  if (selectedTileIndex === null) return;
+
+  await apiPost("/api/domino/rooms/" + currentRoomId + "/play", {
+    user_id: userId,
+    tile_index: selectedTileIndex,
+    side: side,
+  });
+  selectedTileIndex = null;
+  refreshGame();
+}
+
+async function drawTile(){
+  await apiPost("/api/domino/rooms/" + currentRoomId + "/draw/" + userId, {});
+  refreshGame();
+}
+
+async function showFinalScore(game){
+  const scoreA = game.total_score[game.player_a.user_id] || 0;
+  const scoreB = game.total_score[game.player_b.user_id] || 0;
+  let winnerText = "مساوی شد";
+  if (game.match_winner === game.player_a.user_id){
+    winnerText = "برنده: " + game.player_a.username;
+  } else if (game.match_winner === game.player_b.user_id){
+    winnerText = "برنده: " + game.player_b.username;
+  }
+  document.getElementById("turn-status").innerText =
+    "🏁 بازی تمام شد! " + winnerText +
+    " (امتیاز نهایی: " + scoreA + " - " + scoreB + ")";
+}
+</script>
+</body>
+</html>
