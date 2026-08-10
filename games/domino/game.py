@@ -4,7 +4,11 @@ Fully independent from other games (per project rule).
 
 قوانین کلی:
 - هر بازیکن ۷ مهره می‌گیره (۱۴ مهره باقی‌مونده تو boneyard می‌مونه).
-- دست اول: کسی که بالاترین دوبل رو داره شروع می‌کنه.
+- دست اول: پخش تکرار می‌شه تا حداقل یکی از دو بازیکن یک مهره‌ی جفت داشته
+  باشه. صاحب بالاترین جفت شروع‌کننده‌ست و باید همون جفت رو اولین
+  حرکت بازی کنه.
+- از حرکت دوم به بعد (و از دست دوم به بعد کلاً)، هر مهره‌ی قابل‌بازی
+  آزادانه قابل انداختنه، اجباری به جفت نیست.
 - از دست دوم به بعد، شروع‌کننده برعکس دست قبل می‌شه.
 - اگه بازیکنی تو نوبتش مهره‌ی قابل بازی نداشته باشه، باید یکی‌یکی از
   boneyard بکشه تا مهره‌ی قابل بازی گیرش بیاد و بلافاصله بازیش کنه.
@@ -22,6 +26,7 @@ from games.domino.deck import Deck
 from games.domino.state import DominoState
 from games.domino.rules import (
     find_highest_double,
+    hand_has_double,
     can_play_tile,
     valid_sides_for_tile,
     place_tile,
@@ -56,6 +61,10 @@ class DominoGame:
         # این متغیر نشون می‌ده کدوم مهره (اندیس تو دستش) رو تازه کشیده.
         self.pending_forced_tile_index: dict[int, int | None] = {}
 
+        # فقط برای اولین حرکت اولین دست: مهره‌ی جفتی که شروع‌کننده باید حتماً
+        # همونو اول بندازه.
+        self.first_round_required_tile: Tile | None = None
+
     # ---------- شروع مسابقه و دست ----------
 
     def start_game(self) -> bool:
@@ -66,15 +75,28 @@ class DominoGame:
 
     def _start_round(self, starter_user_id: int | None, is_first_round: bool = False):
         self.round_number += 1
-
-        self.deck = Deck()
-        self.deck.shuffle()
+        self.first_round_required_tile = None
 
         self.player_a.hand = []
         self.player_b.hand = []
 
-        self.player_a.add_to_hand(self.deck.draw(TILES_PER_PLAYER))
-        self.player_b.add_to_hand(self.deck.draw(TILES_PER_PLAYER))
+        if is_first_round:
+            # تا وقتی حداقل یکی از بازیکنان یک مهره‌ی جفت نداشته باشه،
+            # دوباره پخش می‌کنیم.
+            while True:
+                self.deck = Deck()
+                self.deck.shuffle()
+                dealt_a = self.deck.draw(TILES_PER_PLAYER)
+                dealt_b = self.deck.draw(TILES_PER_PLAYER)
+                if hand_has_double(dealt_a) or hand_has_double(dealt_b):
+                    self.player_a.add_to_hand(dealt_a)
+                    self.player_b.add_to_hand(dealt_b)
+                    break
+        else:
+            self.deck = Deck()
+            self.deck.shuffle()
+            self.player_a.add_to_hand(self.deck.draw(TILES_PER_PLAYER))
+            self.player_b.add_to_hand(self.deck.draw(TILES_PER_PLAYER))
 
         self.state = DominoState()
         self.pending_forced_tile_index = {
@@ -88,8 +110,11 @@ class DominoGame:
                 self.player_b.user_id: self.player_b.hand,
             }
             starter = find_highest_double(hands)
-            if starter is None:
-                starter = self.player_a.user_id
+            starter_hand = hands[starter]
+            highest_double_value = max(
+                tile.left for tile in starter_hand if tile.is_double
+            )
+            self.first_round_required_tile = Tile(highest_double_value, highest_double_value)
         else:
             starter = starter_user_id
 
@@ -198,9 +223,20 @@ class DominoGame:
         if tile_index < 0 or tile_index >= len(player.hand):
             return {"success": False, "reason": "invalid_tile_index"}
 
+        tile = player.hand[tile_index]
+
+        # اولین حرکت اولین دست حتماً باید همون مهره‌ی جفتی باشه که باعث
+        # شروع‌کننده شدن این بازیکن شده.
+        if (
+            self.round_number == 1
+            and len(self.state.board) == 0
+            and self.first_round_required_tile is not None
+        ):
+            if tile != self.first_round_required_tile:
+                return {"success": False, "reason": "must_play_starting_double"}
+
         # اگه بازیکن مهره‌ی قابل‌بازی داشت ولی این‌یکی که انتخاب کرده
         # قابل‌بازی نیست، رد می‌کنیم (باید یکی از مهره‌های قابل‌بازیش رو بزنه)
-        tile = player.hand[tile_index]
         valid_sides = valid_sides_for_tile(tile, self.state.left_end, self.state.right_end)
         if side not in valid_sides:
             return {"success": False, "reason": "tile_not_playable_on_this_side"}
