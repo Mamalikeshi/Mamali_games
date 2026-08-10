@@ -1,5 +1,5 @@
 """
-Piece (token) model for Manch (Ludo) - supports 2, 3, and 4 players.
+Piece (token) model for Mench (Ludo) - supports 2, 3, and 4 players.
 Fully independent from other games (per project rule).
 
 هر مهره یکی از این وضعیت‌ها رو داره:
