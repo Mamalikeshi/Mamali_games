@@ -1,0 +1,1 @@
+"""Chahar Barg game package."""
