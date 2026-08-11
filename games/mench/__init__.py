@@ -1,0 +1,1 @@
+"""Mench (Ludo) game package."""
