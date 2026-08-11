@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دبرنا</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body{
+    margin:0;
+    background:#151515;
+    color:white;
+    font-family:tahoma;
+    text-align:center;
+    padding-bottom:30px;
+  }
+  h1{ margin-top:20px; font-size:22px; }
+  .box{
+    max-width:440px;
+    margin:15px auto;
+    padding:10px;
+  }
+  .button{
+    width:250px;
+    margin:8px auto;
+    padding:14px;
+    background:#2f80ed;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:17px;
+    border:none;
+    color:white;
+    display:block;
+  }
+  .button:disabled{ background:#444; }
+  .back{
+    background:#333;
+    width:150px;
+    font-size:15px;
+    padding:10px;
+  }
+  input{
+    width:220px;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+    text-align:center;
+    margin:8px auto;
+  }
+  .status{
+    color:#9be08b;
+    margin:10px;
+    font-size:14px;
+  }
+  .mode-select{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin:10px auto;
+  }
+  .mode-btn{
+    padding:12px 16px;
+    background:#333;
+    border:2px solid #555;
+    border-radius:10px;
+    color:white;
+    font-size:15px;
+  }
+  .mode-btn.selected{
+    border-color:#2f80ed;
+    background:#1c3a5e;
+  }
+  .players-list{
+    margin:10px auto;
+    font-size:13px;
+    max-height:150px;
+    overflow-y:auto;
+  }
+  .player-row{ padding:3px; }
+
+  #current-number-box{
+    width:110px;
+    height:110px;
+    border-radius:50%;
+    background:linear-gradient(145deg,#f2c94c,#f2994a);
+    color:#151515;
+    font-size:46px;
+    font-weight:bold;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:15px auto;
+  }
+  #next-number-status{
+    font-size:13px;
+    color:#aaa;
+    margin-bottom:10px;
+  }
+  #drawn-history{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    justify-content:center;
+    max-width:400px;
+    margin:10px auto;
+  }
+  .drawn-chip{
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    background:#333;
+    font-size:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  #leaderboard{
+    margin:15px auto;
+    max-width:400px;
+    text-align:right;
+    font-size:13px;
+  }
+  .leaderboard-row{
+    display:flex;
+    justify-content:space-between;
+    padding:5px 10px;
+    background:#222;
+    border-radius:6px;
+    margin:4px 0;
+  }
+  .leaderboard-row .missing{
+    color:#f2c94c;
+    font-size:11px;
+  }
+
+  .card-grid{
+    display:grid;
+    grid-template-columns:repeat(9,1fr);
+    gap:3px;
+    max-width:400px;
+    margin:12px auto;
+    background:#222;
+    padding:6px;
+    border-radius:8px;
+  }
+  .card-cell{
+    aspect-ratio:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#333;
+    border-radius:4px;
+    font-size:12px;
+  }
+  .card-cell.empty{ background:transparent; }
+  .card-cell.marked{
+    background:#27ae60;
+    color:white;
+    font-weight:bold;
+  }
+  .card-label{
+    margin-top:10px;
+    font-size:13px;
+    color:#aaa;
+  }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<h1>🎱 دبرنا</h1>
+
+<div id="screen-menu" class="box">
+  <p>ظرفیت اتاق را انتخاب کن:</p>
+  <div class="mode-select">
+    <div class="mode-btn" id="mode-10" onclick="selectMode(10)">۱۰ نفره</div>
+    <div class="mode-btn" id="mode-20" onclick="selectMode(20)">۲۰ نفره</div>
+    <div class="mode-btn" id="mode-30" onclick="selectMode(30)">۳۰ نفره</div>
+  </div>
+  <button class="button" onclick="createRoom()">ساخت اتاق جدید</button>
+  <div>
+    <input id="join-room-id" placeholder="کد اتاق را وارد کن">
+    <br>
+    <button class="button" onclick="joinRoom()">پیوستن به اتاق</button>
+  </div>
+  <div id="menu-status" class="status"></div>
+</div>
+
+<div id="screen-waiting" class="box hidden">
+  <p>کد اتاق: <b id="waiting-room-id"></b></p>
+  <p id="waiting-count"></p>
+  <button class="button" id="take-card-btn" onclick="takeCard()">گرفتن یک برگه (حداکثر ۲)</button>
+  <div id="my-cards-preview"></div>
+  <button class="button" id="ready-btn" onclick="setReady()" disabled>آماده‌ام</button>
+  <div class="players-list" id="waiting-players"></div>
+</div>
+
+<div id="screen-game" class="box hidden">
+  <div id="current-number-box">-</div>
+  <div id="next-number-status"></div>
+
+  <p style="font-size:13px;color:#aaa;">اعداد اعلام‌شده:</p>
+  <div id="drawn-history"></div>
+
+  <p style="margin-top:20px;">🏆 نزدیک‌ترین‌ها به برد:</p>
+  <div id="leaderboard"></div>
+
+  <div id="my-cards-area"></div>
+</div>
+
+<div id="screen-finished" class="box hidden">
+  <h2>🏁 بازی تمام شد!</h2>
+  <div id="winner-text"></div>
+</div>
+
+<div class="box">
+  <button class="button back" onclick="goBack()">🔙 بازگشت به منو</button>
+</div>
+
+<script>
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+let user = tg.initDataUnsafe && tg.initDataUnsafe.user
+  ? tg.initDataUnsafe.user
+  : { id: Math.floor(Math.random() * 1000000), username: "guest" };
+
+let userId = user.id;
+let username = user.username || user.first_name || ("player" + userId);
+
+let currentRoomId = null;
+let pollTimer = null;
+let selectedMode = 10;
+let myCardCount = 0;
+
+function goBack(){
+  window.location.href = "index.html";
+}
+
+function selectMode(mode){
+  selectedMode = mode;
+  [10,20,30].forEach(m => {
+    document.getElementById("mode-" + m).classList.toggle("selected", m === mode);
+  });
+}
+selectMode(10);
+
+async function apiPost(path, body){
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  return res.json();
+}
+
+async function apiGet(path){
+  const res = await fetch(path);
+  return res.json();
+}
+
+async function createRoom(){
+  const data = await apiPost("/api/daberna/rooms", {
+    user_id: userId,
+    username: username,
+    max_players: selectedMode,
+  });
+  if (data.success){
+    currentRoomId = data.room_id;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "خطا در ساخت اتاق";
+  }
+}
+
+async function joinRoom(){
+  const roomId = document.getElementById("join-room-id").value.trim();
+  if (!roomId){
+    document.getElementById("menu-status").innerText = "کد اتاق را وارد کن";
+    return;
+  }
+  const data = await apiPost("/api/daberna/rooms/" + roomId + "/join", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = roomId;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "اتاق پیدا نشد یا پر است";
+  }
+}
+
+function showWaitingScreen(){
+  document.getElementById("screen-menu").classList.add("hidden");
+  document.getElementById("screen-waiting").classList.remove("hidden");
+  document.getElementById("waiting-room-id").innerText = currentRoomId;
+  startWaitingPoll();
+}
+
+async function takeCard(){
+  const data = await apiPost("/api/daberna/rooms/" + currentRoomId + "/cards/" + userId, {});
+  if (data.success){
+    myCardCount = data.card_count;
+    renderMyCardPreview(data.grid, myCardCount);
+    if (myCardCount >= 2){
+      document.getElementById("take-card-btn").disabled = true;
+      document.getElementById("take-card-btn").innerText = "حداکثر ۲ برگه گرفته شد";
+    }
+    document.getElementById("ready-btn").disabled = false;
+  } else {
+    alert(data.detail || "خطا در گرفتن برگه");
+  }
+}
+
+function renderMyCardPreview(grid, count){
+  const el = document.getElementById("my-cards-preview");
+  const div = document.createElement("div");
+  div.className = "card-grid";
+  div.style.marginTop = "10px";
+  grid.forEach(row => {
+    row.forEach(cell => {
+      const c = document.createElement("div");
+      c.className = "card-cell" + (cell === null ? " empty" : "");
+      c.innerText = cell === null ? "" : cell;
+      div.appendChild(c);
+    });
+  });
+  el.appendChild(div);
+  const label = document.createElement("div");
+  label.className = "card-label";
+  label.innerText = "برگه‌ی شماره " + count;
+  el.appendChild(label);
+}
+
+async function setReady(){
+  document.getElementById("ready-btn").disabled = true;
+  document.getElementById("take-card-btn").disabled = true;
+  await apiPost("/api/daberna/rooms/" + currentRoomId + "/ready/" + userId, {});
+}
+
+function startWaitingPoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const data = await apiGet("/api/daberna/rooms/" + currentRoomId);
+    document.getElementById("waiting-count").innerText =
+      "بازیکنان: " + data.current_players + " / " + data.max_players;
+    document.getElementById("waiting-players").innerHTML = data.players.map(p =>
+      "<div class='player-row'>" + p.username + " — " + p.card_count + " برگه " +
+      (p.is_ready ? "✅" : "⏳") + "</div>"
+    ).join("");
+
+    if (data.is_started){
+      clearInterval(pollTimer);
+      showGameScreen();
+    }
+  }, 2000);
+}
+
+function showGameScreen(){
+  document.getElementById("screen-waiting").classList.add("hidden");
+  document.getElementById("screen-game").classList.remove("hidden");
+  startGamePoll();
+}
+
+function startGamePoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  refreshGame();
+  pollTimer = setInterval(refreshGame, 2000);
+}
+
+async function refreshGame(){
+  const gameData = await apiGet("/api/daberna/rooms/" + currentRoomId + "/game");
+  if (!gameData.success) return;
+
+  const game = gameData.game;
+  const state = game.state;
+
+  renderCurrentNumber(state, game.seconds_until_next_number);
+  renderHistory(state.drawn_numbers);
+  renderLeaderboard(game.leaderboard);
+
+  const cardsData = await apiGet("/api/daberna/rooms/" + currentRoomId + "/cards/" + userId);
+  if (c
