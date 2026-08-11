@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>منچ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body{
+    margin:0;
+    background:#151515;
+    color:white;
+    font-family:tahoma;
+    text-align:center;
+    padding-bottom:30px;
+  }
+  h1{ margin-top:20px; font-size:22px; }
+  .box{
+    max-width:440px;
+    margin:15px auto;
+    padding:10px;
+  }
+  .button{
+    width:250px;
+    margin:8px auto;
+    padding:14px;
+    background:#2f80ed;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:17px;
+    border:none;
+    color:white;
+    display:block;
+  }
+  .button:disabled{ background:#444; }
+  .back{
+    background:#333;
+    width:150px;
+    font-size:15px;
+    padding:10px;
+  }
+  input{
+    width:220px;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+    text-align:center;
+    margin:8px auto;
+  }
+  .status{
+    color:#9be08b;
+    margin:10px;
+    font-size:14px;
+  }
+  #board{
+    display:grid;
+    grid-template-columns:repeat(15,1fr);
+    grid-template-rows:repeat(15,1fr);
+    width:min(94vw,420px);
+    height:min(94vw,420px);
+    margin:15px auto;
+    border:3px solid #5d4037;
+    background:#fdf6e3;
+  }
+  .cell{
+    position:relative;
+    border:0.5px solid rgba(0,0,0,0.08);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-wrap:wrap;
+  }
+  .zone-red{ background:#f5b7b1; }
+  .zone-blue{ background:#aed6f1; }
+  .zone-green{ background:#a9dfbf; }
+  .zone-yellow{ background:#f9e79f; }
+  .track-cell{ background:#fffdf5; }
+  .safe-cell{ background:#f0e6c8; }
+  .safe-cell::after{
+    content:"★";
+    position:absolute;
+    font-size:9px;
+    color:#b8860b;
+    top:0; left:1px;
+  }
+  .home-red{ background:#e74c3c; }
+  .home-blue{ background:#2e86de; }
+  .home-green{ background:#27ae60; }
+  .home-yellow{ background:#f1c40f; }
+  .center-cell{
+    background:#5d4037;
+    color:white;
+    font-size:10px;
+  }
+  .piece{
+    width:60%;
+    height:60%;
+    border-radius:50%;
+    border:1.5px solid white;
+    box-shadow:0 0 2px black;
+  }
+  .piece-red{ background:#e74c3c; }
+  .piece-blue{ background:#2e86de; }
+  .piece-green{ background:#27ae60; }
+  .piece-yellow{ background:#f1c40f; }
+
+  .mode-select{
+    display:flex;
+    justify-content:center;
+    gap:8px;
+    margin:10px auto;
+  }
+  .mode-btn{
+    padding:12px 16px;
+    background:#333;
+    border:2px solid #555;
+    border-radius:10px;
+    color:white;
+    font-size:15px;
+  }
+  .mode-btn.selected{
+    border-color:#2f80ed;
+    background:#1c3a5e;
+  }
+
+  .players-list{
+    margin:10px auto;
+    font-size:14px;
+  }
+  .player-row{
+    padding:4px;
+  }
+
+  #dice-area{
+    margin:10px auto;
+  }
+  #dice-value{
+    font-size:34px;
+    margin:6px;
+  }
+  .my-pieces{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:15px auto;
+    flex-wrap:wrap;
+  }
+  .my-piece-btn{
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    border:3px solid #444;
+    font-size:11px;
+    color:white;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .my-piece-btn.enabled{
+    border-color:#f2c94c;
+    box-shadow:0 0 8px #f2c94c;
+    cursor:pointer;
+  }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<h1>🎲 منچ</h1>
+
+<div id="screen-menu" class="box">
+  <p>تعداد بازیکن‌ها را انتخاب کن:</p>
+  <div class="mode-select">
+    <div class="mode-btn" id="mode-2" onclick="selectMode(2)">۲ نفره</div>
+    <div class="mode-btn" id="mode-3" onclick="selectMode(3)">۳ نفره</div>
+    <div class="mode-btn" id="mode-4" onclick="selectMode(4)">۴ نفره</div>
+  </div>
+  <button class="button" onclick="createRoom()">ساخت اتاق جدید</button>
+  <div>
+    <input id="join-room-id" placeholder="کد اتاق را وارد کن">
+    <br>
+    <button class="button" onclick="joinRoom()">پیوستن به اتاق</button>
+  </div>
+  <div id="menu-status" class="status"></div>
+</div>
+
+<div id="screen-waiting" class="box hidden">
+  <p>کد اتاق: <b id="waiting-room-id"></b></p>
+  <p>رنگ شما: <b id="waiting-my-color"></b></p>
+  <div class="players-list" id="waiting-players"></div>
+  <button class="button" id="ready-btn" onclick="setReady()">آماده‌ام</button>
+</div>
+
+<div id="screen-game" class="box hidden">
+  <p id="turn-status"></p>
+
+  <div id="board"></div>
+
+  <div id="dice-area">
+    <div id="dice-value">🎲</div>
+    <button class="button" id="roll-btn" onclick="rollDice()">پرتاب تاس</button>
+  </div>
+
+  <p>مهره‌های شما (برای حرکت دادن بزن):</p>
+  <div class="my-pieces" id="my-pieces"></div>
+</div>
+
+<div class="box">
+  <button class="button back" onclick="goBack()">🔙 بازگشت به منو</button>
+</div>
+
+<script>
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+let user = tg.initDataUnsafe && tg.initDataUnsafe.user
+  ? tg.initDataUnsafe.user
+  : { id: Math.floor(Math.random() * 1000000), username: "guest" };
+
+let userId = user.id;
+let username = user.username || user.first_name || ("player" + userId);
+
+let currentRoomId = null;
+let pollTimer = null;
+let selectedMode = 2;
+
+const COLOR_LABELS = {
+  red: "قرمز",
+  blue: "آبی",
+  green: "سبز",
+  yellow: "زرد",
+};
+
+// ---------- تخته‌ی بازی: مسیر مشترک ۵۲خونه‌ای ----------
+const TRACK_PATH = [
+  [6,1],[6,2],[6,3],[6,4],[6,5],
+  [5,6],[4,6],[3,6],[2,6],[1,6],[0,6],
+  [0,7],
+  [0,8],[1,8],[2,8],[3,8],[4,8],[5,8],
+  [6,9],[6,10],[6,11],[6,12],[6,13],[6,14],
+  [7,14],
+  [8,14],[8,13],[8,12],[8,11],[8,10],[8,9],
+  [9,8],[10,8],[11,8],[12,8],[13,8],[14,8],
+  [14,7],
+  [14,6],[13,6],[12,6],[11,6],[10,6],[9,6],
+  [8,5],[8,4],[8,3],[8,2],[8,1],[8,0],
+  [7,0],
+  [6,0],
+];
+
+const ENTRY_OFFSET = { red: 0, blue: 13, green: 26, yellow: 39 };
+const SAFE_GLOBAL_CELLS = new Set(Object.values(ENTRY_OFFSET));
+
+const HOME_COLUMNS = {
+  red:    [[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],
+  blue:   [[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],
+  green:  [[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]],
+  yellow: [[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]],
+};
+
+const YARD_POSITIONS = {
+  red:    [[1,1],[1,4],[4,1],[4,4]],
+  blue:   [[1,10],[1,13],[4,10],[4,13]],
+  green:  [[10,10],[10,13],[13,10],[13,13]],
+  yellow: [[10,1],[10,4],[13,1],[13,4]],
+};
+
+let cellElements = {}; // "r,c" -> DOM element
+
+function isInTrack(r, c){
+  return TRACK_PATH.some(([tr, tc]) => tr === r && tc === c);
+}
+
+function trackIndexOf(r, c){
+  return TRACK_PATH.findIndex(([tr, tc]) => tr === r && tc === c);
+}
+
+function homeColumnColorAt(r, c){
+  for (const color in HOME_COLUMNS){
+    if (HOME_COLUMNS[color].some(([hr, hc]) => hr === r && hc === c)){
+      return color;
+    }
+  }
+  return null;
+}
+
+function buildBoard(){
+  const board = document.getElementById("board");
+  board.innerHTML = "";
+  cellElements = {};
+
+  for (let r = 0; r < 15; r++){
+    for (let c = 0; c < 15; c++){
+      const cell = document.createElement("div");
+      cell.className = "cell";
+
+      if (r < 6 && c < 6){
+        cell.classList.add("zone-red");
+      } else if (r < 6 && c > 8){
+        cell.classList.add("zone-blue");
+      } else if (r > 8 && c > 8){
+        cell.classList.add("zone-green");
+      } else if (r > 8 && c < 6){
+        cell.classList.add("zone-yellow");
+      } else if (r === 7 && c === 7){
+        cell.classList.add("center-cell");
+        cell.innerText = "🏁";
+      } else {
+        const homeColor = homeColumnColorAt(r, c);
+        if (homeColor){
+          cell.classList.add("home-" + homeColor);
+        } else if (isInTrack(r, c)){
+          const idx = trackIndexOf(r, c);
+          cell.classList.add(SAFE_GLOBAL_CELLS.has(idx) ? "safe-cell" : "track-cell");
+        }
+      }
+
+      board.appendChild(cell);
+      cellElements[r + "," + c] = cell;
+    }
+  }
+}
+
+function clearPieces(){
+  Object.values(cellElements).forEach(cell => {
+    cell.querySelectorAll(".piece").forEach(p => p.remove());
+  });
+}
+
+function positionForPiece(color, piece, indexInYard){
+  if (piece.status === "yard"){
+    const pos = YARD_POSITIONS[color][indexInYard % 4];
+    return pos;
+  }
+  if (piece.status === "home_column" || piece.status === "finished"){
+    const step = Math.min(Math.max(piece.relative_step - 51, 0), 5);
+    return HOME_COLUMNS[color][step];
+  }
+  // track
+  const globalIdx = (ENTRY_OFFSET[color] + piece.relative_step) % 52;
+  return TRACK_PATH[globalIdx];
+}
+
+function renderPieces(players){
+  clearPieces();
+  players.forEach(player => {
+    player.pieces.forEach((piece, index) => {
+      const pos = positionForPiece(player.color, piece, index);
+      if (!pos) return;
+      const cell = cellElements[pos[0] + "," + pos[1]];
+      if (!cell) return;
+      const dot = document.createElement("div");
+      dot.className = "piece piece-" + player.color;
+      cell.appendChild(dot);
+    });
+  });
+}
+
+function goBack(){
+  window.location.href = "index.html";
+}
+
+function selectMode(mode){
+  selectedMode = mode;
+  [2,3,4].forEach(m => {
+    document.getElementById("mode-" + m).classList.toggle("selected", m === mode);
+  });
+}
+selectMode(2);
+
+async function apiPost(path, body){
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  return res.json();
+}
+
+async function apiGet(path){
+  const res = await fetch(path);
+  return res.json();
+}
+
+async function createRoom(){
+  const data = await apiPost("/api/mench/rooms", {
+    user_id: userId,
+    username: username,
+    max_players: selectedMode,
+  });
+  if (data.success){
+    currentRoomId = data.room_id;
+    showWaitingScreen(data.your_color);
+  } else {
+    document.getElementById("menu-status").innerText = "خطا در ساخت اتاق";
+  }
+}
+
+async function joinRoom(){
+  const roomId = document.getElementById("join-room-id").value.trim();
+  if (!roomId){
+    document.getElementById("menu-status").innerText = "کد اتاق را وارد کن";
+    return;
+  }
+  const data = await apiPost("/api/mench/rooms/" + roomId + "/join", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = roomId;
+    showWaitingScreen(data.your_color);
+  } else {
+    document.getElementById("menu-status").innerText = "اتاق پیدا نشد یا پر است";
+  }
+}
+
+function showWaitingScreen(myColor){
+  document.getElementById("screen-menu").classList.add("hidden");
+  document.getElementById("screen-waiting").classList.remove("hidden");
+  document.getElementById("waiting-room-id").innerText = currentRoomId;
+  document.getElementById("waiting-my-color").innerText = COLOR_LABELS[myColor] || myColor;
+  startWaitingPoll();
+}
+
+async function setReady(){
+  document.getElementById("ready-btn").disabled = true;
+  await apiPost("/api/mench/rooms/" + currentRoomId + "/ready/" + userId, {});
+}
+
+function startWaitingPoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const data = await apiGet("/api/mench/rooms/" + currentRoomId);
+    const listEl = document.getElementById("waiting-players");
+    listEl.innerHTML = data.players.map(p =>
+      "<div class='player-row'>" + p.username + " — " + (COLOR_LABELS[p.color] || p.color) +
+      (p.is_ready ? " ✅" : " ⏳") + "</div>"
+    ).join("");
+
+    if (data.is_started){
+      clearInterval(pollTimer);
+      showGameScreen();
+      return;
+    }
+  }, 2000);
+}
+
+function showGameScreen(){
+  document.getElementById("screen-waiting").classList.add("hidden");
+  document.getElementById("screen-game").classList.remove("hidden");
+  buildBoard();
+  startGamePoll();
+}
+
+function startGamePoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  refreshGame();
+  pollTimer = setInterval(refreshGame, 2000);
+}
+
+async function refreshGame(){
+  const gameData = await apiGet("/api/mench/rooms/" + currentRoomId + "/game");
+  if (!gameData.success) return;
+
+  const game = gameData.game;
+  const state = game.state;
+
+  renderPieces(game.players);
+  renderTurn(state, game);
+  renderDice(state);
+  renderMyPieces(game, state);
+
+  if (game.match_finished){
+    clearInterval(pollTimer);
+    showFinalResult(game);
+  }
+}
+
+function renderTurn(state, game){
+  if (game.match_finished) return;
+  const isMyTurn = state.current_turn === userId;
+  document.getElementById("turn-status").innerText =
+    isMyTurn ? "نوبت شماست 🎯" : "منتظر بازیکن دیگر...";
+  document.getElementById("roll-btn").disabled =
+    !isMyTurn || state.awaiting_move_after_roll;
+}
+
+function renderDice(state){
+  document.getElementById("dice-value").innerText =
+    state.last_dice_value ? "🎲 " + state.last_dice_value : "🎲";
+}
+
+function renderMyPieces(game, state){
+  const el = document.getElementById("my-pieces");
+  el.innerHTML = "";
+
+  const me = game.players.find(p => p.user_id === userId);
+  if (!me) return;
+
+  const isMyTurn = state.current_turn === userId;
+  const canMove = isMyTurn && state.awaiting_move_after_roll;
+
+  me.pieces.forEach(piece => {
+    const btn = document.createElement("div");
+    btn.className = "my-piece-btn piece-" + me.color;
+    btn.style.background = getComputedStyle(document.querySelector(".piece-" + me.color) || document.body).background;
+    btn.innerText = piece.status === "yard" ? "خونه" :
+      piece.status === "finished" ? "تمام" :
+      piece.status === "home_column" ? "نزدیک" : "مسیر";
+
+    if (canMove){
+      btn.classList.add("enabled");
+      btn.onclick = () => movePiece(piece.piece_id);
+    }
+    el.appendChild(btn);
+  });
+}
+
+async function rollDice(){
+  document.getElementById("roll-btn").disabled = true;
+  const data = await apiPost("/api/mench/rooms/" + currentRoomId + "/roll", {
+    user_id: userId,
+  });
+  if (!data.success){
+    alert(data.detail || "خطا در پرتاب تاس");
+  }
+  refreshGame();
+}
+
+async function movePiece(pieceId){
+  const data = await apiPost("/api/mench/rooms/" + currentRoomId + "/move", {
+    user_id: userId,
+    piece_id: pieceId,
+  });
+  if (!data.success){
+    alert(data.detail || "این مهره را نمی‌توانید حرکت دهید");
+  }
+  refreshGame();
+}
+
+async function showFinalResult(game){
+  const winner = game.players.find(p => p.user_id === game.winner_user_id);
+  document.getElementById("turn-status").innerText =
+    "🏁 بازی تمام شد! برنده: " + (winner ? winner.username : "-");
+  document.getElementById("roll-btn").disabled = true;
+}
+</script>
+</body>
+</html>
