@@ -5,6 +5,7 @@ from api.hokm import router as hokm_router
 from api.chahar_barg import router as chahar_barg_router
 from api.domino import router as domino_router
 from api.mench import router as mench_router
+from api.daberna import router as daberna_router
 
 app = FastAPI(
     title="Mamali Games",
@@ -23,6 +24,7 @@ app.include_router(hokm_router)
 app.include_router(chahar_barg_router)
 app.include_router(domino_router)
 app.include_router(mench_router)
+app.include_router(daberna_router)
 
 
 @app.get("/")
