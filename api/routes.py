@@ -1,13 +1,186 @@
 from fastapi import APIRouter
+from pydantic import BaseModel
+
+from api.room import create_room, join_room, get_room
+from api.hokm import (
+    start_hokm,
+    choose_trump,
+    play_card,
+    get_game_state,
+)
+
 
 router = APIRouter()
 
 
+class CreateRoomRequest(BaseModel):
+    room_id: str
+
+
+class JoinRoomRequest(BaseModel):
+    room_id: str
+    user_id: int
+    username: str
+
+
+class StartGameRequest(BaseModel):
+    room_id: str
+
+
+class ChooseTrumpRequest(BaseModel):
+    room_id: str
+    user_id: int
+    suit: str
+
+
+class PlayCardRequest(BaseModel):
+    room_id: str
+    user_id: int
+    card_index: int
+
+
 @router.get("/api/status")
 async def status():
-
     return {
         "project": "Mamali Games",
         "status": "online",
-        "version": "0.1"
+        "version": "0.1",
+    }
+
+
+@router.post("/api/room/create")
+async def create_room_api(
+    request: CreateRoomRequest,
+):
+    room = create_room(request.room_id)
+
+    if room is None:
+        return {
+            "success": False,
+            "error": "Room already exists",
+        }
+
+    return {
+        "success": True,
+        "room": room.to_dict(),
+    }
+
+
+@router.post("/api/room/join")
+async def join_room_api(
+    request: JoinRoomRequest,
+):
+    room = join_room(
+        request.room_id,
+        request.user_id,
+        request.username,
+    )
+
+    if room is None:
+        return {
+            "success": False,
+            "error": "Cannot join room",
+        }
+
+    return {
+        "success": True,
+        "room": room.to_dict(),
+    }
+
+
+@router.get("/api/room/{room_id}")
+async def get_room_api(room_id: str):
+    room = get_room(room_id)
+
+    if room is None:
+        return {
+            "success": False,
+            "error": "Room not found",
+        }
+
+    return {
+        "success": True,
+        "room": room.to_dict(),
+    }
+
+
+@router.post("/api/game/start")
+async def start_game_api(
+    request: StartGameRequest,
+):
+    game = start_hokm(request.room_id)
+
+    if game is None:
+        return {
+            "success": False,
+            "error": "Cannot start game",
+        }
+
+    return {
+        "success": True,
+        "state": game.get_state(),
+    }
+
+
+@router.post("/api/game/trump")
+async def choose_trump_api(
+    request: ChooseTrumpRequest,
+):
+    success = choose_trump(
+        request.room_id,
+        request.user_id,
+        request.suit,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Cannot choose trump",
+        }
+
+    return {
+        "success": True,
+        "state": get_game_state(
+            request.room_id
+        ),
+    }
+
+
+@router.post("/api/game/play")
+async def play_card_api(
+    request: PlayCardRequest,
+):
+    success = play_card(
+        request.room_id,
+        request.user_id,
+        request.card_index,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Invalid card move",
+        }
+
+    return {
+        "success": True,
+        "state": get_game_state(
+            request.room_id
+        ),
+    }
+
+
+@router.get("/api/game/{room_id}")
+async def get_game_api(room_id: str):
+    state = get_game_state(room_id)
+
+    if state is None:
+        return {
+            "success": False,
+            "error": "Game not found",
+        }
+
+    return {
+        "success": True,
+        "state": state,
     }
