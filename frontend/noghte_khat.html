@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نقطه‌خط</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body{
+    margin:0;
+    background:#151515;
+    color:white;
+    font-family:tahoma;
+    text-align:center;
+    padding-bottom:30px;
+  }
+  h1{ margin-top:20px; font-size:22px; }
+  .box{
+    max-width:420px;
+    margin:15px auto;
+    padding:10px;
+  }
+  .button{
+    width:250px;
+    margin:8px auto;
+    padding:14px;
+    background:#2f80ed;
+    border-radius:12px;
+    cursor:pointer;
+    font-size:17px;
+    border:none;
+    color:white;
+    display:block;
+  }
+  .button:disabled{ background:#444; }
+  .back{
+    background:#333;
+    width:150px;
+    font-size:15px;
+    padding:10px;
+  }
+  input{
+    width:220px;
+    padding:12px;
+    border-radius:10px;
+    border:none;
+    font-size:16px;
+    text-align:center;
+    margin:8px auto;
+  }
+  .status{
+    color:#9be08b;
+    margin:10px;
+    font-size:14px;
+  }
+  .scoreboard{
+    margin:10px;
+    font-size:16px;
+  }
+
+  #grid{
+    display:grid;
+    width:min(92vw,380px);
+    height:min(92vw,380px);
+    margin:15px auto;
+    background:#151515;
+  }
+  .dot{
+    background:#151515;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .dot::after{
+    content:"";
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:#ccc;
+  }
+  .line-h, .line-v{
+    background:#2a2a2a;
+    cursor:pointer;
+  }
+  .line-h.drawn, .line-v.drawn{
+    background:#f2c94c;
+    cursor:default;
+  }
+  .line-h.drawn.me, .line-v.drawn.me{
+    background:#2f80ed;
+  }
+  .line-h.drawn.opponent, .line-v.drawn.opponent{
+    background:#eb5757;
+  }
+  .cell-box{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:9px;
+  }
+  .cell-box.owned-me{ background:rgba(47,128,237,0.35); }
+  .cell-box.owned-opponent{ background:rgba(235,87,87,0.35); }
+
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+
+<h1>✏️ نقطه‌خط (۵×۵)</h1>
+
+<div id="screen-menu" class="box">
+  <button class="button" onclick="createRoom()">ساخت اتاق جدید</button>
+  <div>
+    <input id="join-room-id" placeholder="کد اتاق را وارد کن">
+    <br>
+    <button class="button" onclick="joinRoom()">پیوستن به اتاق</button>
+  </div>
+  <div id="menu-status" class="status"></div>
+</div>
+
+<div id="screen-waiting" class="box hidden">
+  <p>کد اتاق: <b id="waiting-room-id"></b></p>
+  <p id="waiting-status">در انتظار بازیکن دوم...</p>
+  <button class="button" id="ready-btn" onclick="setReady()">آماده‌ام</button>
+</div>
+
+<div id="screen-game" class="box hidden">
+  <div class="scoreboard" id="scoreboard"></div>
+  <p id="turn-status"></p>
+  <div id="grid"></div>
+</div>
+
+<div id="screen-finished" class="box hidden">
+  <h2>🏁 بازی تمام شد!</h2>
+  <div id="winner-text"></div>
+</div>
+
+<div class="box">
+  <button class="button back" onclick="goBack()">🔙 بازگشت به منو</button>
+</div>
+
+<script>
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+let user = tg.initDataUnsafe && tg.initDataUnsafe.user
+  ? tg.initDataUnsafe.user
+  : { id: Math.floor(Math.random() * 1000000), username: "guest" };
+
+let userId = user.id;
+let username = user.username || user.first_name || ("player" + userId);
+
+let currentRoomId = null;
+let pollTimer = null;
+
+const GRID_SIZE = 5;
+const DOTS = GRID_SIZE + 1;
+const GRID_DIM = 2 * DOTS - 1; // 11
+
+function goBack(){
+  window.location.href = "index.html";
+}
+
+async function apiPost(path, body){
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  return res.json();
+}
+
+async function apiGet(path){
+  const res = await fetch(path);
+  return res.json();
+}
+
+async function createRoom(){
+  const data = await apiPost("/api/noghte_khat/rooms", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = data.room_id;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "خطا در ساخت اتاق";
+  }
+}
+
+async function joinRoom(){
+  const roomId = document.getElementById("join-room-id").value.trim();
+  if (!roomId){
+    document.getElementById("menu-status").innerText = "کد اتاق را وارد کن";
+    return;
+  }
+  const data = await apiPost("/api/noghte_khat/rooms/" + roomId + "/join", {
+    user_id: userId,
+    username: username,
+  });
+  if (data.success){
+    currentRoomId = roomId;
+    showWaitingScreen();
+  } else {
+    document.getElementById("menu-status").innerText = "اتاق پیدا نشد یا پر است";
+  }
+}
+
+function showWaitingScreen(){
+  document.getElementById("screen-menu").classList.add("hidden");
+  document.getElementById("screen-waiting").classList.remove("hidden");
+  document.getElementById("waiting-room-id").innerText = currentRoomId;
+  startWaitingPoll();
+}
+
+async function setReady(){
+  document.getElementById("ready-btn").disabled = true;
+  await apiPost("/api/noghte_khat/rooms/" + currentRoomId + "/ready/" + userId, {});
+}
+
+function startWaitingPoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    const data = await apiGet("/api/noghte_khat/rooms/" + currentRoomId);
+    if (data.is_started){
+      clearInterval(pollTimer);
+      showGameScreen();
+      return;
+    }
+    document.getElementById("waiting-status").innerText =
+      "بازیکنان: " + data.players.length + " / 2";
+  }, 2000);
+}
+
+function showGameScreen(){
+  document.getElementById("screen-waiting").classList.add("hidden");
+  document.getElementById("screen-game").classList.remove("hidden");
+  buildGrid();
+  startGamePoll();
+}
+
+function buildGrid(){
+  const grid = document.getElementById("grid");
+  grid.innerHTML = "";
+
+  // تعریف ستون‌ها و ردیف‌ها: نقطه‌ها کوچیک، خط‌ها بزرگتر
+  const dotSize = "6fr";
+  const lineSize = "34fr";
+  const template = [];
+  for (let i = 0; i < GRID_DIM; i++){
+    template.push(i % 2 === 0 ? dotSize : lineSize);
+  }
+  grid.style.gridTemplateColumns = template.join(" ");
+  grid.style.gridTemplateRows = template.join(" ");
+
+  for (let gr = 0; gr < GRID_DIM; gr++){
+    for (let gc = 0; gc < GRID_DIM; gc++){
+      const cell = document.createElement("div");
+
+      if (gr % 2 === 0 && gc % 2 === 0){
+        cell.className = "dot";
+      } else if (gr % 2 === 0 && gc % 2 === 1){
+        const row = gr / 2;
+        const col = (gc - 1) / 2;
+        const lineId = "h-" + row + "-" + col;
+        cell.className = "line-h";
+        cell.dataset.lineId = lineId;
+        cell.onclick = () => drawLine(lineId);
+      } else if (gr % 2 === 1 && gc % 2 === 0){
+        const row = (gr - 1) / 2;
+        const col = gc / 2;
+        const lineId = "v-" + row + "-" + col;
+        cell.className = "line-v";
+        cell.dataset.lineId = lineId;
+        cell.onclick = () => drawLine(lineId);
+      } else {
+        const row = (gr - 1) / 2;
+        const col = (gc - 1) / 2;
+        cell.className = "cell-box";
+        cell.dataset.boxKey = row + "-" + col;
+      }
+
+      grid.appendChild(cell);
+    }
+  }
+}
+
+function startGamePoll(){
+  if (pollTimer) clearInterval(pollTimer);
+  refreshGame();
+  pollTimer = setInterval(refreshGame, 2000);
+}
+
+async function refreshGame(){
+  const gameData = await apiGet("/api/noghte_khat/rooms/" + currentRoomId + "/game");
+  if (!gameData.success) return;
+
+  const game = gameData.game;
+  const state = game.state;
+
+  renderScoreboard(game);
+  renderTurn(state);
+  renderLines(state.drawn_lines);
+  renderBoxes(state.owned_boxes);
+
+  if (state.game_over){
+    clearInterval(pollTimer);
+    showFinished(state, game);
+  }
+}
+
+function renderScoreboard(game){
+  document.getElementById("scoreboard").innerText =
+    game.player_a.username + ": " + game.player_a.score + "  |  " +
+    game.player_b.username + ": " + game.player_b.score;
+}
+
+function renderTurn(state){
+  document.getElementById("turn-status").innerText =
+    state.current_turn === userId ? "نوبت شماست 🎯" : "منتظر حریف...";
+}
+
+function renderLines(drawnLines){
+  document.querySelectorAll(".line-h, .line-v").forEach(el => {
+    const lineId = el.dataset.lineId;
+    const owner = drawnLines[lineId];
+    if (owner !== undefined){
+      el.classList.add("drawn");
+      el.classList.toggle("me", owner === userId);
+      el.classList.toggle("opponent", owner !== userId);
+      el.onclick = null;
+    }
+  });
+}
+
+function renderBoxes(ownedBoxes){
+  document.querySelectorAll(".cell-box").forEach(el => {
+    const key = el.dataset.boxKey;
+    const owner = ownedBoxes[key];
+    el.classList.remove("owned-me", "owned-opponent");
+    if (owner !== undefined){
+      el.classList.add(owner === userId ? "owned-me" : "owned-opponent");
+    }
+  });
+}
+
+async function drawLine(lineId){
+  await apiPost("/api/noghte_khat/rooms/" + currentRoomId + "/draw", {
+    user_id: userId,
+    line_id: lineId,
+  });
+  refreshGame();
+}
+
+function showFinished(state, game){
+  document.getElementById("screen-game").classList.add("hidden");
+  document.getElementById("screen-finished").classList.remove("hidden");
+  const el = document.getElementById("winner-text");
+
+  if (state.winner_user_id === null){
+    el.innerText = "مساوی شد! هیچ‌کس برنده نیست.";
+  } else {
+    const winnerName = state.winner_user_id === game.player_a.user_id
+      ? game.player_a.username
+      : game.player_b.username;
+    el.innerText = "🎉 برنده: " + winnerName +
+      " (" + game.player_a.score + " - " + game.player_b.score + ")";
+  }
+}
+</script>
+</body>
+</html>
