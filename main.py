@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from api.hokm import router as hokm_router
 from api.chahar_barg import router as chahar_barg_router
@@ -29,16 +30,10 @@ app.include_router(daberna_router)
 app.include_router(noghte_khat_router)
 
 
-@app.get("/")
-def home():
-    return {
-        "success": True,
-        "message": "Mamali Games API is running",
-    }
-
-
 @app.get("/health")
 def health():
-    return {
-        "status": "ok",
-    }
+    return {"status": "ok"}
+
+
+# این خط باید همیشه آخرین خط باشه: صفحات frontend/ رو روی آدرس اصلی سرو می‌کنه
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
