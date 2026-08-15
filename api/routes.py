@@ -9,6 +9,7 @@ from api.hokm import (
     get_game_state,
 )
 from api.profile import register_or_get_user, get_profile
+from api.matchmaking import find_match, cancel_matchmaking
 
 
 router = APIRouter()
@@ -16,6 +17,11 @@ router = APIRouter()
 
 class CreateRoomRequest(BaseModel):
     room_id: str
+
+
+class MatchmakingRequest(BaseModel):
+    user_id: int
+    username: str
 
 
 class RegisterUserRequest(BaseModel):
@@ -222,4 +228,26 @@ async def get_profile_api(telegram_id: int):
     return {
         "success": True,
         "profile": profile,
+    }
+
+
+@router.post("/api/matchmaking/find")
+async def matchmaking_find_api(request: MatchmakingRequest):
+    result = find_match(
+        request.user_id,
+        request.username,
+    )
+
+    return {
+        "success": True,
+        **result,
+    }
+
+
+@router.post("/api/matchmaking/cancel")
+async def matchmaking_cancel_api(request: MatchmakingRequest):
+    cancel_matchmaking(request.user_id)
+
+    return {
+        "success": True,
     }
