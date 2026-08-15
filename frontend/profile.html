@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پروفایل من</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body{
+            margin:0;
+            background:#151515;
+            color:white;
+            font-family:tahoma;
+            text-align:center;
+            padding-bottom:40px;
+        }
+
+        h1{
+            margin-top:30px;
+            font-size:22px;
+        }
+
+        .avatar{
+            width:80px;
+            height:80px;
+            border-radius:50%;
+            background:#2f80ed;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:32px;
+            margin:20px auto;
+        }
+
+        .name{
+            font-size:20px;
+            margin-bottom:4px;
+        }
+
+        .username{
+            color:#888;
+            font-size:14px;
+            margin-bottom:25px;
+        }
+
+        .stats{
+            width:260px;
+            margin:0 auto;
+        }
+
+        .stat-row{
+            display:flex;
+            justify-content:space-between;
+            background:#1f1f1f;
+            padding:14px 18px;
+            border-radius:10px;
+            margin-bottom:10px;
+            font-size:15px;
+        }
+
+        .stat-label{ color:#aaa; }
+        .stat-value{ font-weight:bold; }
+
+        .balance-box{
+            width:260px;
+            margin:20px auto;
+            padding:18px;
+            background:#2f80ed;
+            border-radius:14px;
+        }
+
+        .balance-box .label{
+            font-size:13px;
+            opacity:0.85;
+        }
+
+        .balance-box .value{
+            font-size:26px;
+            font-weight:bold;
+            margin-top:4px;
+        }
+
+        .back-button{
+            width:200px;
+            margin:25px auto 0;
+            padding:14px;
+            background:#333;
+            border-radius:12px;
+            cursor:pointer;
+            font-size:16px;
+        }
+
+        .loading{
+            margin-top:60px;
+            color:#888;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>👤 پروفایل من</h1>
+
+<div id="loading" class="loading">در حال بارگذاری...</div>
+
+<div id="content" style="display:none;">
+
+    <div class="avatar" id="avatar-letter">؟</div>
+    <div class="name" id="display-name"></div>
+    <div class="username" id="display-username"></div>
+
+    <div class="balance-box">
+        <div class="label">موجودی</div>
+        <div class="value" id="balance-value"></div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-row">
+            <span class="stat-label">تعداد بازی‌ها</span>
+            <span class="stat-value" id="total-games"></span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">بردها</span>
+            <span class="stat-value" id="total-wins"></span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">باخت‌ها</span>
+            <span class="stat-value" id="total-losses"></span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">درصد برد</span>
+            <span class="stat-value" id="win-rate"></span>
+        </div>
+    </div>
+
+</div>
+
+<div class="back-button" onclick="window.location.href='index.html'">
+⬅️ بازگشت به منو
+</div>
+
+<script>
+
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+function getTelegramUser() {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        return tg.initDataUnsafe.user;
+    }
+    let stored = localStorage.getItem("mamali_user_id");
+    if (!stored) {
+        stored = Math.floor(Math.random() * 1000000000);
+        localStorage.setItem("mamali_user_id", stored);
+    }
+    return {
+        id: parseInt(stored),
+        first_name: "بازیکن",
+        username: "",
+    };
+}
+
+async function loadProfile() {
+    const tgUser = getTelegramUser();
+
+    const res = await fetch("/api/profile/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            telegram_id: tgUser.id,
+            first_name: tgUser.first_name || "بازیکن",
+            username: tgUser.username || "",
+        }),
+    });
+
+    const data = await res.json();
+
+    if (!data.success) {
+        document.getElementById("loading").innerText = "مشکلی پیش اومد";
+        return;
+    }
+
+    const profile = data.profile;
+
+    document.getElementById("avatar-letter").innerText =
+        (profile.first_name || "؟").charAt(0);
+
+    document.getElementById("display-name").innerText = profile.first_name || "بازیکن";
+    document.getElementById("display-username").innerText =
+        profile.username ? "@" + profile.username : "";
+
+    document.getElementById("balance-value").innerText =
+        (profile.balance || 0) + " USDT";
+
+    document.getElementById("total-games").innerText = profile.total_games || 0;
+    document.getElementById("total-wins").innerText = profile.total_wins || 0;
+    document.getElementById("total-losses").innerText = profile.total_losses || 0;
+    document.getElementById("win-rate").innerText = (profile.win_rate || 0) + "%";
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("content").style.display = "block";
+}
+
+loadProfile();
+
+</script>
+
+</body>
+</html>
