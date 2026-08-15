@@ -9,7 +9,7 @@ from api.hokm import (
     get_game_state,
 )
 from api.profile import register_or_get_user, get_profile
-from api.matchmaking import find_match, cancel_matchmaking
+from api.matchmaking import find_match, cancel_matchmaking, waiting_queue, matched_rooms
 
 
 router = APIRouter()
@@ -273,4 +273,18 @@ async def matchmaking_cancel_api(request: MatchmakingRequest):
 
     return {
         "success": True,
+    }
+
+
+@router.get("/api/matchmaking/debug")
+async def matchmaking_debug_api():
+    import api.room
+
+    return {
+        "waiting_queue": waiting_queue,
+        "matched_rooms": matched_rooms,
+        "rooms": {
+            rid: room.to_dict()
+            for rid, room in api.room.rooms.items()
+        },
     }
