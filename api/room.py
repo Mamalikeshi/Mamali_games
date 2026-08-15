@@ -25,6 +25,7 @@ def join_room(room_id: str, user_id: int, username: str):
         user_id=user_id,
         username=username,
     )
+    player.is_ready = True
 
     if not room.add_player(player):
         return None
