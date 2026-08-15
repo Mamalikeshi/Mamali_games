@@ -8,6 +8,7 @@ from api.hokm import (
     play_card,
     get_game_state,
 )
+from api.profile import register_or_get_user, get_profile
 
 
 router = APIRouter()
@@ -15,6 +16,12 @@ router = APIRouter()
 
 class CreateRoomRequest(BaseModel):
     room_id: str
+
+
+class RegisterUserRequest(BaseModel):
+    telegram_id: int
+    first_name: str = ""
+    username: str = ""
 
 
 class JoinRoomRequest(BaseModel):
@@ -141,7 +148,8 @@ async def choose_trump_api(
     return {
         "success": True,
         "state": get_game_state(
-            request.room_id
+            request.room_id,
+            request.user_id,
         ),
     }
 
@@ -165,14 +173,15 @@ async def play_card_api(
     return {
         "success": True,
         "state": get_game_state(
-            request.room_id
+            request.room_id,
+            request.user_id,
         ),
     }
 
 
 @router.get("/api/game/{room_id}")
-async def get_game_api(room_id: str):
-    state = get_game_state(room_id)
+async def get_game_api(room_id: str, user_id: int = None):
+    state = get_game_state(room_id, user_id)
 
     if state is None:
         return {
@@ -183,4 +192,34 @@ async def get_game_api(room_id: str):
     return {
         "success": True,
         "state": state,
+    }
+
+
+@router.post("/api/profile/register")
+async def register_user_api(request: RegisterUserRequest):
+    user = await register_or_get_user(
+        request.telegram_id,
+        request.first_name,
+        request.username,
+    )
+
+    return {
+        "success": True,
+        "profile": user,
+    }
+
+
+@router.get("/api/profile/{telegram_id}")
+async def get_profile_api(telegram_id: int):
+    profile = await get_profile(telegram_id)
+
+    if profile is None:
+        return {
+            "success": False,
+            "error": "User not found",
+        }
+
+    return {
+        "success": True,
+        "profile": profile,
     }
