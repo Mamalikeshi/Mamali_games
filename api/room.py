@@ -25,7 +25,6 @@ def join_room(room_id: str, user_id: int, username: str):
         user_id=user_id,
         username=username,
     )
-    player.is_ready = True
 
     if not room.add_player(player):
         return None
@@ -35,3 +34,19 @@ def join_room(room_id: str, user_id: int, username: str):
 
 def get_room(room_id: str):
     return rooms.get(room_id)
+
+
+def mark_ready(room_id: str, user_id: int):
+    room = rooms.get(room_id)
+
+    if room is None:
+        return False
+
+    player = room.get_player(user_id)
+
+    if player is None:
+        return False
+
+    player.is_ready = True
+
+    return True
