@@ -2,12 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from api.hokm import router as hokm_router
-from api.chahar_barg import router as chahar_barg_router
-from api.domino import router as domino_router
-from api.mench import router as mench_router
-from api.daberna import router as daberna_router
-from api.noghte_khat import router as noghte_khat_router
+from api.routes import router as api_router
+from backend.database import init_database
 
 app = FastAPI(
     title="Mamali Games",
@@ -22,12 +18,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(hokm_router)
-app.include_router(chahar_barg_router)
-app.include_router(domino_router)
-app.include_router(mench_router)
-app.include_router(daberna_router)
-app.include_router(noghte_khat_router)
+app.include_router(api_router)
+
+
+@app.on_event("startup")
+async def on_startup():
+    await init_database()
 
 
 @app.get("/health")
