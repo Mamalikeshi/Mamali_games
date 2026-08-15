@@ -128,16 +128,26 @@
 
 <div id="screen-lobby">
     <input id="username" placeholder="اسمت رو بنویس" maxlength="20">
-    <input id="room_id" placeholder="کد اتاق (مثلاً 1234)" maxlength="20">
 
-    <div class="button" onclick="createRoom()">➕ ساخت اتاق جدید</div>
-    <div class="button" onclick="joinRoom()">🚪 پیوستن به اتاق</div>
+    <div class="button" onclick="findRandomMatch()">🎲 بازی با غریبه (تصادفی)</div>
+
+    <div class="status" id="matchmaking-status"></div>
+
+    <div class="status" style="margin-top:30px; cursor:pointer;" onclick="toggleFriendMode()">
+        یا بازی با دوست با کد اتاق ⌄
+    </div>
+
+    <div id="friend-mode" style="display:none;">
+        <input id="room_id" placeholder="کد اتاق (مثلاً 1234)" maxlength="20">
+        <div class="button" onclick="createRoom()">➕ ساخت اتاق جدید</div>
+        <div class="button" onclick="joinRoom()">🚪 پیوستن به اتاق</div>
+    </div>
 
     <div class="status" id="lobby-status"></div>
 </div>
 
 <div id="screen-waiting" style="display:none;">
-    <div class="status">
+    <div class="status" id="waiting-room-label">
         کد اتاق: <b id="waiting-room-id"></b><br>
         این کد رو به حریفت بده تا وارد بشه
     </div>
@@ -225,6 +235,37 @@ function randomRoomCode() {
     return String(Math.floor(1000 + Math.random() * 9000));
 }
 
+function toggleFriendMode() {
+    const el = document.getElementById("friend-mode");
+    el.style.display = (el.style.display === "none") ? "block" : "none";
+}
+
+let matchmakingTimer = null;
+
+async function findRandomMatch() {
+    const username = document.getElementById("username").value.trim() || "بازیکن";
+    document.getElementById("matchmaking-status").innerText = "در حال جستجوی حریف...";
+
+    clearInterval(matchmakingTimer);
+    matchmakingTimer = setInterval(() => pollMatchmaking(username), 2000);
+    pollMatchmaking(username);
+}
+
+async function pollMatchmaking(username) {
+    const res = await api("/api/matchmaking/find", "POST", {
+        user_id: userId,
+        username: username,
+    });
+
+    if (res.matched) {
+        clearInterval(matchmakingTimer);
+        roomId = res.room_id;
+        document.getElementById("waiting-room-label").style.display = "none";
+        showScreen("waiting");
+        startWaitingPoll();
+    }
+}
+
 async function createRoom() {
     const username = document.getElementById("username").value.trim() || "بازیکن";
     let code = document.getElementById("room_id").value.trim();
@@ -248,6 +289,7 @@ async function createRoom() {
     }
 
     roomId = code;
+    document.getElementById("waiting-room-label").style.display = "block";
     document.getElementById("waiting-room-id").innerText = code;
     showScreen("waiting");
     startWaitingPoll();
@@ -274,6 +316,7 @@ async function joinRoom() {
     }
 
     roomId = code;
+    document.getElementById("waiting-room-label").style.display = "block";
     document.getElementById("waiting-room-id").innerText = code;
     showScreen("waiting");
     startWaitingPoll();
