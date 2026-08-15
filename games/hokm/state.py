@@ -10,6 +10,10 @@ class GameState:
 
         self.trick_wins = {}
 
+        # امتیاز کلی بازی: تعداد دست‌هایی که هر بازیکن برده
+        self.hand_wins = {}
+        self.hand_number = 1
+
         self.winner = None
 
     def set_turn(self, user_id: int):
@@ -36,6 +40,13 @@ class GameState:
     def clear_trick(self):
         self.trick_cards = []
 
+    def start_new_hand(self):
+        self.trump = None
+        self.trick_cards = []
+        self.completed_tricks = 0
+        self.trick_wins = {}
+        self.hand_number += 1
+
     def set_winner(self, user_id: int):
         self.winner = user_id
 
@@ -46,6 +57,8 @@ class GameState:
             "trump": self.trump,
             "completed_tricks": self.completed_tricks,
             "trick_wins": self.trick_wins,
+            "hand_wins": self.hand_wins,
+            "hand_number": self.hand_number,
             "winner": self.winner,
             "trick_cards": [
                 {
