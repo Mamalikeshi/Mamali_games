@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from api.room import create_room, join_room, get_room
+from api.room import create_room, join_room, get_room, mark_ready
 from api.hokm import (
     start_hokm,
     choose_trump,
@@ -17,6 +17,11 @@ router = APIRouter()
 
 class CreateRoomRequest(BaseModel):
     room_id: str
+
+
+class ReadyRequest(BaseModel):
+    room_id: str
+    user_id: int
 
 
 class MatchmakingRequest(BaseModel):
@@ -114,6 +119,24 @@ async def get_room_api(room_id: str):
     return {
         "success": True,
         "room": room.to_dict(),
+    }
+
+
+@router.post("/api/room/ready")
+async def mark_ready_api(request: ReadyRequest):
+    success = mark_ready(
+        request.room_id,
+        request.user_id,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Cannot mark ready",
+        }
+
+    return {
+        "success": True,
     }
 
 
