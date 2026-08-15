@@ -1,3 +1,5 @@
+import random
+
 from games.hokm.state import GameState
 from games.hokm.deck import Deck
 from games.hokm.player import Player
@@ -25,15 +27,9 @@ class HokmGame:
 
         self.room.start()
 
-        self.deck = Deck()
-        self.deck.shuffle()
+        hokm_player = random.choice(self.room.players)
 
-        self.deck.deal(self.room.players, 5)
-
-        hokm_player = self.room.players[0]
-        hokm_player.is_hokm = True
-
-        self.state.set_turn(hokm_player.user_id)
+        self._deal_new_hand(hokm_player.user_id)
 
         return True
 
@@ -86,6 +82,11 @@ class HokmGame:
         if card_index < 0 or card_index >= len(player.hand):
             return False
 
+        # دست قبلی کامل شده بود (هر دو برگ روی زمین دیده شدن)؛
+        # حالا که بازیکن بعدی داره برگ جدید میندازه، وقتشه پاکش کنیم
+        if self.state.is_trick_complete():
+            self.state.clear_trick()
+
         card = player.hand[card_index]
 
         if self.state.trick_cards:
@@ -114,10 +115,11 @@ class HokmGame:
 
             self.state.add_trick_win(winner)
 
-            self.state.clear_trick()
+            # نکته: اینجا عمداً دست رو پاک نمی‌کنیم، تا هر دو بازیکن
+            # فرصت ببینن هر دو برگ روی زمین چی بودن (تا حرکت بعدی)
 
-            if self._check_game_finished():
-                self.state.set_winner(winner)
+            if self._check_hand_finished():
+                self._finish_hand(winner)
             else:
                 self.state.set_turn(winner)
 
@@ -150,15 +152,43 @@ class HokmGame:
 
         return first_user
 
-    def _check_game_finished(self):
+    def _check_hand_finished(self):
         for user_id, wins in self.state.trick_wins.items():
             if wins >= 7:
                 return True
 
         return False
 
+    def _finish_hand(self, hand_winner: int):
+        self.state.hand_wins[hand_winner] = (
+            self.state.hand_wins.get(hand_winner, 0) + 1
+        )
+
+        if self.state.hand_wins[hand_winner] >= 7:
+            self.state.set_winner(hand_winner)
+            self.state.set_turn(hand_winner)
+        else:
+            self._deal_new_hand(hand_winner)
+
+    def _deal_new_hand(self, hokm_user_id: int):
+        for player in self.room.players:
+            player.is_hokm = False
+            player.hand = []
+
+        self.state.start_new_hand()
+
+        self.deck = Deck()
+        self.deck.shuffle()
+
+        self.deck.deal(self.room.players, 5)
+
+        hokm_player = self.get_player(hokm_user_id)
+        hokm_player.is_hokm = True
+
+        self.state.set_turn(hokm_user_id)
+
     def get_scores(self):
-        return self.state.trick_wins
+        return self.state.hand_wins
 
     def get_winner(self):
         return self.state.winner
