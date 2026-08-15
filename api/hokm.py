@@ -52,10 +52,21 @@ def play_card(
     )
 
 
-def get_game_state(room_id: str):
+def get_game_state(room_id: str, user_id: int = None):
     game = games.get(room_id)
 
     if game is None:
         return None
 
-    return game.get_state()
+    state = game.get_state()
+
+    if user_id is not None:
+        player = game.get_player(user_id)
+
+        if player is not None:
+            state["my_hand"] = [
+                card.to_dict() for card in player.hand
+            ]
+            state["my_is_hokm"] = player.is_hokm
+
+    return state
