@@ -83,18 +83,47 @@
         }
 
         .card{
-            width:55px;
-            height:80px;
+            width:62px;
+            height:92px;
             background:white;
             color:#111;
             border-radius:8px;
+            position:relative;
             display:flex;
             flex-direction:column;
             align-items:center;
             justify-content:center;
-            font-size:16px;
-            font-weight:bold;
             cursor:pointer;
+            box-shadow:0 2px 4px rgba(0,0,0,0.4);
+        }
+
+        .card .corner{
+            position:absolute;
+            top:4px;
+            left:5px;
+            font-size:12px;
+            font-weight:bold;
+            line-height:1.1;
+            text-align:center;
+        }
+
+        .card .center-symbol{
+            font-size:26px;
+        }
+
+        .card .center-face{
+            font-size:32px;
+        }
+
+        .card .pip-grid{
+            display:grid;
+            grid-template-columns:repeat(2, 1fr);
+            gap:2px;
+            padding:16px 6px 4px;
+        }
+
+        .card .pip-grid span{
+            font-size:11px;
         }
 
         .card.red{ color:#d32f2f; }
@@ -300,8 +329,25 @@ async function refreshGame() {
     renderGame(res.state);
 }
 
-function cardLabel(card) {
-    return card.rank + SUIT_SYMBOLS[card.suit];
+function cardInner(card) {
+    const symbol = SUIT_SYMBOLS[card.suit];
+    const corner = `<div class="corner">${card.rank}<br>${symbol}</div>`;
+
+    if (card.rank === "A") {
+        return corner + `<div class="center-symbol">${symbol}</div>`;
+    }
+
+    const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
+    if (faceEmojis[card.rank]) {
+        return corner + `<div class="center-face">${faceEmojis[card.rank]}</div>`;
+    }
+
+    const count = card.rank_value;
+    let pips = "";
+    for (let i = 0; i < count; i++) {
+        pips += `<span>${symbol}</span>`;
+    }
+    return corner + `<div class="pip-grid">${pips}</div>`;
 }
 
 function renderGame(state) {
@@ -322,19 +368,33 @@ function renderGame(state) {
 
     const scoreRow = document.getElementById("score-row");
     scoreRow.innerHTML = "";
-    for (const [uid, wins] of Object.entries(state.trick_wins || {})) {
-        const label = (parseInt(uid) === userId) ? "من" : "حریف";
+
+    const handWins = state.hand_wins || {};
+    const trickWins = state.trick_wins || {};
+    const allUserIds = new Set([
+        ...Object.keys(handWins),
+        ...Object.keys(trickWins),
+        String(userId),
+    ]);
+
+    allUserIds.forEach((uidStr) => {
+        const uid = parseInt(uidStr);
+        const label = (uid === userId) ? "من" : "حریف";
         const div = document.createElement("div");
-        div.innerText = label + ": " + wins;
+        div.innerHTML =
+            label + "<br>دست‌ها: " + (handWins[uid] || 0) + "/7" +
+            "<br><span style='font-size:12px;color:#777'>این دست: " + (trickWins[uid] || 0) + "</span>";
         scoreRow.appendChild(div);
-    }
+    });
+
+    document.getElementById("game-status").innerText += "  |  دست " + (state.hand_number || 1);
 
     const trickArea = document.getElementById("trick-area");
     trickArea.innerHTML = "";
     (state.trick_cards || []).forEach((tc) => {
         const div = document.createElement("div");
         div.className = "card" + (RED_SUITS.includes(tc.card.suit) ? " red" : "");
-        div.innerText = cardLabel(tc.card);
+        div.innerHTML = cardInner(tc.card);
         trickArea.appendChild(div);
     });
 
@@ -353,7 +413,7 @@ function renderGame(state) {
         const div = document.createElement("div");
         const canPlay = myTurn && state.trump && !needsTrump;
         div.className = "card" + (RED_SUITS.includes(card.suit) ? " red" : "") + (canPlay ? "" : " disabled");
-        div.innerText = cardLabel(card);
+        div.innerHTML = cardInner(card);
         if (canPlay) {
             div.onclick = () => playCard(index);
         }
