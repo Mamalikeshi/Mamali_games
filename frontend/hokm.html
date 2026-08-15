@@ -119,40 +119,35 @@
             margin:15px auto;
             font-size:15px;
         }
+
+        .back-link{
+            position:absolute;
+            top:20px;
+            right:20px;
+            font-size:14px;
+            color:#aaa;
+            cursor:pointer;
+        }
     </style>
 </head>
 
 <body>
+
+<div class="back-link" onclick="window.location.href='index.html'">⬅️ بازگشت به منو</div>
 
 <h1>🃏 حکم دونفره</h1>
 
 <div id="screen-lobby">
     <input id="username" placeholder="اسمت رو بنویس" maxlength="20">
 
-    <div class="button" onclick="findRandomMatch()">🎲 بازی با غریبه (تصادفی)</div>
+    <div class="button" onclick="findRandomMatch()">🎲 پیدا کردن حریف</div>
 
     <div class="status" id="matchmaking-status"></div>
-
-    <div class="status" style="margin-top:30px; cursor:pointer;" onclick="toggleFriendMode()">
-        یا بازی با دوست با کد اتاق ⌄
-    </div>
-
-    <div id="friend-mode" style="display:none;">
-        <input id="room_id" placeholder="کد اتاق (مثلاً 1234)" maxlength="20">
-        <div class="button" onclick="createRoom()">➕ ساخت اتاق جدید</div>
-        <div class="button" onclick="joinRoom()">🚪 پیوستن به اتاق</div>
-    </div>
-
-    <div class="status" id="lobby-status"></div>
 </div>
 
 <div id="screen-waiting" style="display:none;">
-    <div class="status" id="waiting-room-label">
-        کد اتاق: <b id="waiting-room-id"></b><br>
-        این کد رو به حریفت بده تا وارد بشه
-    </div>
-    <div class="status" id="waiting-status">در انتظار بازیکن دوم...</div>
-    <div class="button" id="start-button" style="display:none;" onclick="startGame()">▶️ شروع بازی</div>
+    <div class="status" id="waiting-status">حریف پیدا شد! وقتی آماده‌ای بزن شروع</div>
+    <div class="button" id="start-button" onclick="markReady()">✅ من آماده‌ام</div>
 </div>
 
 <div id="screen-game" style="display:none;">
@@ -231,16 +226,8 @@ async function api(path, method, body) {
     return res.json();
 }
 
-function randomRoomCode() {
-    return String(Math.floor(1000 + Math.random() * 9000));
-}
-
-function toggleFriendMode() {
-    const el = document.getElementById("friend-mode");
-    el.style.display = (el.style.display === "none") ? "block" : "none";
-}
-
 let matchmakingTimer = null;
+let iAmReady = false;
 
 async function findRandomMatch() {
     const username = document.getElementById("username").value.trim() || "بازیکن";
@@ -260,66 +247,20 @@ async function pollMatchmaking(username) {
     if (res.matched) {
         clearInterval(matchmakingTimer);
         roomId = res.room_id;
-        document.getElementById("waiting-room-label").style.display = "none";
         showScreen("waiting");
         startWaitingPoll();
     }
 }
 
-async function createRoom() {
-    const username = document.getElementById("username").value.trim() || "بازیکن";
-    let code = document.getElementById("room_id").value.trim();
-    if (!code) code = randomRoomCode();
+async function markReady() {
+    iAmReady = true;
+    document.getElementById("start-button").style.display = "none";
+    document.getElementById("waiting-status").innerText = "منتظر آماده شدن حریف...";
 
-    const createRes = await api("/api/room/create", "POST", { room_id: code });
-    if (!createRes.success) {
-        document.getElementById("lobby-status").innerText = "این کد قبلاً استفاده شده، یه کد دیگه امتحان کن";
-        return;
-    }
-
-    const joinRes = await api("/api/room/join", "POST", {
-        room_id: code,
+    await api("/api/room/ready", "POST", {
+        room_id: roomId,
         user_id: userId,
-        username: username,
     });
-
-    if (!joinRes.success) {
-        document.getElementById("lobby-status").innerText = "مشکلی پیش اومد";
-        return;
-    }
-
-    roomId = code;
-    document.getElementById("waiting-room-label").style.display = "block";
-    document.getElementById("waiting-room-id").innerText = code;
-    showScreen("waiting");
-    startWaitingPoll();
-}
-
-async function joinRoom() {
-    const username = document.getElementById("username").value.trim() || "بازیکن";
-    const code = document.getElementById("room_id").value.trim();
-
-    if (!code) {
-        document.getElementById("lobby-status").innerText = "کد اتاق رو وارد کن";
-        return;
-    }
-
-    const joinRes = await api("/api/room/join", "POST", {
-        room_id: code,
-        user_id: userId,
-        username: username,
-    });
-
-    if (!joinRes.success) {
-        document.getElementById("lobby-status").innerText = "پیوستن به اتاق ممکن نشد (پره یا وجود نداره)";
-        return;
-    }
-
-    roomId = code;
-    document.getElementById("waiting-room-label").style.display = "block";
-    document.getElementById("waiting-room-id").innerText = code;
-    showScreen("waiting");
-    startWaitingPoll();
 }
 
 function startWaitingPoll() {
@@ -334,27 +275,17 @@ async function checkRoom() {
 
     const room = res.room;
 
-    if (room.is_full && !room.is_started) {
-        document.getElementById("waiting-status").innerText = "حریف پیدا شد! آماده‌ای شروع کنیم؟";
-        document.getElementById("start-button").style.display = "block";
-    }
-
     if (room.is_started) {
         clearInterval(pollTimer);
         showScreen("game");
         startGamePoll();
-    }
-}
-
-async function startGame() {
-    const res = await api("/api/game/start", "POST", { room_id: roomId });
-    if (!res.success) {
-        document.getElementById("waiting-status").innerText = "شروع بازی ممکن نشد";
         return;
     }
-    clearInterval(pollTimer);
-    showScreen("game");
-    startGamePoll();
+
+    if (room.is_full && iAmReady) {
+        // اگه هر دو آماده باشن، این خودش بازی رو شروع می‌کنه
+        await api("/api/game/start", "POST", { room_id: roomId });
+    }
 }
 
 function startGamePoll() {
