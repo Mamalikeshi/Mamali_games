@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حکم دونفره</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body{
+            margin:0;
+            background:#151515;
+            color:white;
+            font-family:tahoma;
+            text-align:center;
+            padding-bottom:40px;
+        }
+
+        h1{
+            margin-top:30px;
+            font-size:22px;
+        }
+
+        input{
+            width:220px;
+            padding:12px;
+            margin:8px auto;
+            display:block;
+            border-radius:10px;
+            border:none;
+            font-size:16px;
+            text-align:center;
+        }
+
+        .button{
+            width:250px;
+            margin:15px auto;
+            padding:15px;
+            background:#2f80ed;
+            border-radius:12px;
+            cursor:pointer;
+            font-size:18px;
+        }
+
+        .button.disabled{
+            background:#444;
+            cursor:default;
+        }
+
+        .status{
+            margin:20px auto;
+            font-size:15px;
+            color:#aaa;
+            max-width:280px;
+        }
+
+        .suit-row{
+            display:flex;
+            justify-content:center;
+            gap:10px;
+            margin:15px auto;
+        }
+
+        .suit-btn{
+            width:55px;
+            height:55px;
+            border-radius:10px;
+            background:#2a2a2a;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:26px;
+            cursor:pointer;
+        }
+
+        .hand{
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            gap:8px;
+            margin:20px 10px;
+        }
+
+        .card{
+            width:55px;
+            height:80px;
+            background:white;
+            color:#111;
+            border-radius:8px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            font-size:16px;
+            font-weight:bold;
+            cursor:pointer;
+        }
+
+        .card.red{ color:#d32f2f; }
+
+        .card.disabled{
+            opacity:0.35;
+            cursor:default;
+        }
+
+        .trick-area{
+            display:flex;
+            justify-content:center;
+            gap:20px;
+            margin:20px auto;
+            min-height:90px;
+        }
+
+        .score-row{
+            display:flex;
+            justify-content:center;
+            gap:30px;
+            margin:15px auto;
+            font-size:15px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🃏 حکم دونفره</h1>
+
+<div id="screen-lobby">
+    <input id="username" placeholder="اسمت رو بنویس" maxlength="20">
+    <input id="room_id" placeholder="کد اتاق (مثلاً 1234)" maxlength="20">
+
+    <div class="button" onclick="createRoom()">➕ ساخت اتاق جدید</div>
+    <div class="button" onclick="joinRoom()">🚪 پیوستن به اتاق</div>
+
+    <div class="status" id="lobby-status"></div>
+</div>
+
+<div id="screen-waiting" style="display:none;">
+    <div class="status">
+        کد اتاق: <b id="waiting-room-id"></b><br>
+        این کد رو به حریفت بده تا وارد بشه
+    </div>
+    <div class="status" id="waiting-status">در انتظار بازیکن دوم...</div>
+    <div class="button" id="start-button" style="display:none;" onclick="startGame()">▶️ شروع بازی</div>
+</div>
+
+<div id="screen-game" style="display:none;">
+    <div class="status" id="game-status"></div>
+
+    <div class="score-row" id="score-row"></div>
+
+    <div class="suit-row" id="trump-picker" style="display:none;">
+        <div class="suit-btn" onclick="chooseTrump('hearts')">♥️</div>
+        <div class="suit-btn" onclick="chooseTrump('diamonds')">♦️</div>
+        <div class="suit-btn" onclick="chooseTrump('clubs')">♣️</div>
+        <div class="suit-btn" onclick="chooseTrump('spades')">♠️</div>
+    </div>
+
+    <div class="trick-area" id="trick-area"></div>
+
+    <div class="hand" id="hand"></div>
+</div>
+
+<div id="screen-finished" style="display:none;">
+    <div class="status" id="finished-status" style="font-size:20px;"></div>
+</div>
+
+<script>
+
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+const SUIT_SYMBOLS = {
+    hearts: "♥️",
+    diamonds: "♦️",
+    clubs: "♣️",
+    spades: "♠️",
+};
+
+const RED_SUITS = ["hearts", "diamonds"];
+
+function getUserId() {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        return tg.initDataUnsafe.user.id;
+    }
+    let stored = localStorage.getItem("mamali_user_id");
+    if (!stored) {
+        stored = Math.floor(Math.random() * 1000000000);
+        localStorage.setItem("mamali_user_id", stored);
+    }
+    return parseInt(stored);
+}
+
+function getDefaultUsername() {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        return tg.initDataUnsafe.user.first_name || "بازیکن";
+    }
+    return "";
+}
+
+const userId = getUserId();
+document.getElementById("username").value = getDefaultUsername();
+
+let roomId = null;
+let pollTimer = null;
+
+function showScreen(name) {
+    ["lobby", "waiting", "game", "finished"].forEach((s) => {
+        document.getElementById("screen-" + s).style.display =
+            (s === name) ? "block" : "none";
+    });
+}
+
+async function api(path, method, body) {
+    const res = await fetch(path, {
+        method: method || "GET",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    return res.json();
+}
+
+function randomRoomCode() {
+    return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+async function createRoom() {
+    const username = document.getElementById("username").value.trim() || "بازیکن";
+    let code = document.getElementById("room_id").value.trim();
+    if (!code) code = randomRoomCode();
+
+    const createRes = await api("/api/room/create", "POST", { room_id: code });
+    if (!createRes.success) {
+        document.getElementById("lobby-status").innerText = "این کد قبلاً استفاده شده، یه کد دیگه امتحان کن";
+        return;
+    }
+
+    const joinRes = await api("/api/room/join", "POST", {
+        room_id: code,
+        user_id: userId,
+        username: username,
+    });
+
+    if (!joinRes.success) {
+        document.getElementById("lobby-status").innerText = "مشکلی پیش اومد";
+        return;
+    }
+
+    roomId = code;
+    document.getElementById("waiting-room-id").innerText = code;
+    showScreen("waiting");
+    startWaitingPoll();
+}
+
+async function joinRoom() {
+    const username = document.getElementById("username").value.trim() || "بازیکن";
+    const code = document.getElementById("room_id").value.trim();
+
+    if (!code) {
+        document.getElementById("lobby-status").innerText = "کد اتاق رو وارد کن";
+        return;
+    }
+
+    const joinRes = await api("/api/room/join", "POST", {
+        room_id: code,
+        user_id: userId,
+        username: username,
+    });
+
+    if (!joinRes.success) {
+        document.getElementById("lobby-status").innerText = "پیوستن به اتاق ممکن نشد (پره یا وجود نداره)";
+        return;
+    }
+
+    roomId = code;
+    document.getElementById("waiting-room-id").innerText = code;
+    showScreen("waiting");
+    startWaitingPoll();
+}
+
+function startWaitingPoll() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(checkRoom, 2000);
+    checkRoom();
+}
+
+async function checkRoom() {
+    const res = await api("/api/room/" + roomId, "GET");
+    if (!res.success) return;
+
+    const room = res.room;
+
+    if (room.is_full && !room.is_started) {
+        document.getElementById("waiting-status").innerText = "حریف پیدا شد! آماده‌ای شروع کنیم؟";
+        document.getElementById("start-button").style.display = "block";
+    }
+
+    if (room.is_started) {
+        clearInterval(pollTimer);
+        showScreen("game");
+        startGamePoll();
+    }
+}
+
+async function startGame() {
+    const res = await api("/api/game/start", "POST", { room_id: roomId });
+    if (!res.success) {
+        document.getElementById("waiting-status").innerText = "شروع بازی ممکن نشد";
+        return;
+    }
+    clearInterval(pollTimer);
+    showScreen("game");
+    startGamePoll();
+}
+
+function startGamePoll() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(refreshGame, 2000);
+    refreshGame();
+}
+
+async function refreshGame() {
+    const res = await api("/api/game/" + roomId + "?user_id=" + userId, "GET");
+    if (!res.success) return;
+    renderGame(res.state);
+}
+
+function cardLabel(card) {
+    return card.rank + SUIT_SYMBOLS[card.suit];
+}
+
+function renderGame(state) {
+    if (state.winner !== null && state.winner !== undefined) {
+        clearInterval(pollTimer);
+        showScreen("finished");
+        const iWon = state.winner === userId;
+        document.getElementById("finished-status").innerText =
+            iWon ? "🎉 بردی!" : "😔 باختی";
+        return;
+    }
+
+    const myTurn = state.current_turn === userId;
+
+    document.getElementById("game-status").innerText = myTurn
+        ? "نوبت توئه"
+        : "منتظر حریف...";
+
+    const scoreRow = document.getElementById("score-row");
+    scoreRow.innerHTML = "";
+    for (const [uid, wins] of Object.entries(state.trick_wins || {})) {
+        const label = (parseInt(uid) === userId) ? "من" : "حریف";
+        const div = document.createElement("div");
+        div.innerText = label + ": " + wins;
+        scoreRow.appendChild(div);
+    }
+
+    const trickArea = document.getElementById("trick-area");
+    trickArea.innerHTML = "";
+    (state.trick_cards || []).forEach((tc) => {
+        const div = document.createElement("div");
+        div.className = "card" + (RED_SUITS.includes(tc.card.suit) ? " red" : "");
+        div.innerText = cardLabel(tc.card);
+        trickArea.appendChild(div);
+    });
+
+    const trumpPicker = document.getElementById("trump-picker");
+    const needsTrump = !state.trump && state.my_is_hokm && myTurn;
+    trumpPicker.style.display = needsTrump ? "flex" : "none";
+
+    if (state.trump) {
+        document.getElementById("game-status").innerText +=
+            "  |  حکم: " + SUIT_SYMBOLS[state.trump];
+    }
+
+    const handDiv = document.getElementById("hand");
+    handDiv.innerHTML = "";
+    (state.my_hand || []).forEach((card, index) => {
+        const div = document.createElement("div");
+        const canPlay = myTurn && state.trump && !needsTrump;
+        div.className = "card" + (RED_SUITS.includes(card.suit) ? " red" : "") + (canPlay ? "" : " disabled");
+        div.innerText = cardLabel(card);
+        if (canPlay) {
+            div.onclick = () => playCard(index);
+        }
+        handDiv.appendChild(div);
+    });
+}
+
+async function chooseTrump(suit) {
+    await api("/api/game/trump", "POST", {
+        room_id: roomId,
+        user_id: userId,
+        suit: suit,
+    });
+    refreshGame();
+}
+
+async function playCard(index) {
+    await api("/api/game/play", "POST", {
+        room_id: roomId,
+        user_id: userId,
+        card_index: index,
+    });
+    refreshGame();
+}
+
+</script>
+
+</body>
+</html>
