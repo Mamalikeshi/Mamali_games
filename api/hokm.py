@@ -58,6 +58,11 @@ def get_game_state(room_id: str, user_id: int = None):
     if game is None:
         return None
 
+    if user_id is not None:
+        game.state.touch(user_id)
+
+    game.check_timeouts()
+
     state = game.get_state()
 
     if user_id is not None:
