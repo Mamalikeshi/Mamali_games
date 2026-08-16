@@ -157,12 +157,28 @@
             color:#aaa;
             cursor:pointer;
         }
+
+        .sound-toggle{
+            position:absolute;
+            top:16px;
+            left:20px;
+            font-size:22px;
+            cursor:pointer;
+        }
+
+        .turn-timer{
+            font-size:14px;
+            color:#f2a13c;
+            margin-top:4px;
+        }
     </style>
 </head>
 
 <body>
 
 <div class="back-link" onclick="window.location.href='index.html'">⬅️ بازگشت به منو</div>
+
+<div class="sound-toggle" id="sound-toggle" onclick="toggleSound()">🔊</div>
 
 <h1>🃏 حکم دونفره</h1>
 
@@ -181,6 +197,7 @@
 
 <div id="screen-game" style="display:none;">
     <div class="status" id="game-status"></div>
+    <div class="turn-timer" id="turn-timer"></div>
 
     <div class="score-row" id="score-row"></div>
 
@@ -239,12 +256,64 @@ document.getElementById("username").value = getDefaultUsername();
 let roomId = null;
 let pollTimer = null;
 
+// --- صدا ---
+let soundMuted = localStorage.getItem("mamali_sound_muted") === "1";
+document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+
+function toggleSound() {
+    soundMuted = !soundMuted;
+    localStorage.setItem("mamali_sound_muted", soundMuted ? "1" : "0");
+    document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+}
+
+function playCardSound() {
+    if (soundMuted) return;
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = 520;
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {}
+}
+
+let lastCardsPlayedCount = null;
+
+// --- تایمر نوبت ---
+let turnTimerInterval = null;
+let lastTurnStartedAt = null;
+let lastServerTime = null;
+
+function startTurnTimerTicker() {
+    clearInterval(turnTimerInterval);
+    turnTimerInterval = setInterval(updateTurnTimerDisplay, 1000);
+}
+
+function updateTurnTimerDisplay() {
+    if (!lastTurnStartedAt) {
+        document.getElementById("turn-timer").innerText = "";
+        return;
+    }
+    const localElapsed = (Date.now() / 1000) - lastServerTime;
+    const elapsed = (lastServerTime - lastTurnStartedAt) + localElapsed;
+    const remaining = Math.max(0, Math.ceil(10 - elapsed));
+    document.getElementById("turn-timer").innerText = "⏱ " + remaining + " ثانیه";
+}
+
 function showScreen(name) {
     ["lobby", "waiting", "game", "finished"].forEach((s) => {
         document.getElementById("screen-" + s).style.display =
             (s === name) ? "block" : "none";
     });
 }
+
+startTurnTimerTicker();
 
 async function api(path, method, body) {
     const res = await fetch(path, {
@@ -351,8 +420,19 @@ function cardInner(card) {
 }
 
 function renderGame(state) {
+    lastTurnStartedAt = state.turn_started_at;
+    lastServerTime = state.server_time;
+    updateTurnTimerDisplay();
+
+    const playedCount = state.cards_played_count || 0;
+    if (lastCardsPlayedCount !== null && playedCount > lastCardsPlayedCount) {
+        playCardSound();
+    }
+    lastCardsPlayedCount = playedCount;
+
     if (state.winner !== null && state.winner !== undefined) {
         clearInterval(pollTimer);
+        clearInterval(turnTimerInterval);
         showScreen("finished");
         const iWon = state.winner === userId;
         document.getElementById("finished-status").innerText =
@@ -438,6 +518,30 @@ async function playCard(index) {
     });
     refreshGame();
 }
+
+// اگه کاربر وسط یه بازی فعال بوده و صفحه رو دوباره باز کرده، خودکار برش می‌گردونیم
+(async function checkForActiveRoom() {
+    const res = await api("/api/room/my-active/" + userId, "GET");
+
+    if (!res.success || !res.room_id) return;
+
+    roomId = res.room_id;
+    const room = res.room;
+    const me = (room.players || []).find((p) => p.user_id === userId);
+    iAmReady = me ? me.is_ready : false;
+
+    if (room.is_started) {
+        showScreen("game");
+        startGamePoll();
+    } else {
+        showScreen("waiting");
+        if (iAmReady) {
+            document.getElementById("start-button").style.display = "none";
+            document.getElementById("waiting-status").innerText = "منتظر آماده شدن حریف...";
+        }
+        startWaitingPoll();
+    }
+})();
 
 </script>
 
