@@ -4,6 +4,9 @@ from games.hokm.player import Player
 
 rooms = {}
 
+# آخرین اتاقی که هر کاربر توش بوده، برای برگشتن به بازی بعد از خروج
+active_room_by_user = {}
+
 
 def create_room(room_id: str):
     if room_id in rooms:
@@ -29,11 +32,17 @@ def join_room(room_id: str, user_id: int, username: str):
     if not room.add_player(player):
         return None
 
+    active_room_by_user[user_id] = room_id
+
     return room
 
 
 def get_room(room_id: str):
     return rooms.get(room_id)
+
+
+def get_active_room_id(user_id: int):
+    return active_room_by_user.get(user_id)
 
 
 def mark_ready(room_id: str, user_id: int):
