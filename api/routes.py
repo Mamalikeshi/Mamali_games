@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from api.room import create_room, join_room, get_room, mark_ready
+from api.room import create_room, join_room, get_room, mark_ready, get_active_room_id
 from api.hokm import (
     start_hokm,
     choose_trump,
@@ -118,6 +118,31 @@ async def get_room_api(room_id: str):
 
     return {
         "success": True,
+        "room": room.to_dict(),
+    }
+
+
+@router.get("/api/room/my-active/{user_id}")
+async def get_my_active_room_api(user_id: int):
+    room_id = get_active_room_id(user_id)
+
+    if room_id is None:
+        return {
+            "success": True,
+            "room_id": None,
+        }
+
+    room = get_room(room_id)
+
+    if room is None:
+        return {
+            "success": True,
+            "room_id": None,
+        }
+
+    return {
+        "success": True,
+        "room_id": room_id,
         "room": room.to_dict(),
     }
 
