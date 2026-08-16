@@ -1,3 +1,6 @@
+import time
+
+
 class GameState:
     def __init__(self, room_id: str):
         self.room_id = room_id
@@ -16,8 +19,19 @@ class GameState:
 
         self.winner = None
 
+        # برای این‌که فرانت‌اند بتونه هر برگ جدید رو تشخیص بده و صدا پخش کنه
+        self.cards_played_count = 0
+
+        # برای تایمر نوبت و تشخیص قطع ارتباط
+        self.turn_started_at = None
+        self.last_seen = {}
+
     def set_turn(self, user_id: int):
         self.current_turn = user_id
+        self.turn_started_at = time.time()
+
+    def touch(self, user_id: int):
+        self.last_seen[user_id] = time.time()
 
     def set_trump(self, suit: str):
         self.trump = suit
@@ -26,6 +40,7 @@ class GameState:
         self.trick_cards.append(
             (user_id, card)
         )
+        self.cards_played_count += 1
 
     def is_trick_complete(self) -> bool:
         return len(self.trick_cards) == 2
@@ -60,6 +75,9 @@ class GameState:
             "hand_wins": self.hand_wins,
             "hand_number": self.hand_number,
             "winner": self.winner,
+            "turn_started_at": self.turn_started_at,
+            "server_time": time.time(),
+            "cards_played_count": self.cards_played_count,
             "trick_cards": [
                 {
                     "user_id": user_id,
