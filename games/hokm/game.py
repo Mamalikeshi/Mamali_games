@@ -1,8 +1,14 @@
 import random
+import time
 
 from games.hokm.state import GameState
 from games.hokm.deck import Deck
+from games.hokm.card import Card
 from games.hokm.player import Player
+
+
+TURN_TIMEOUT_SECONDS = 10
+DISCONNECT_TIMEOUT_SECONDS = 60
 
 
 class HokmGame:
@@ -198,3 +204,66 @@ class HokmGame:
 
     def get_state(self):
         return self.state.to_dict()
+
+    def check_timeouts(self):
+        if self.state.winner is not None:
+            return
+
+        # ۱. اگه بازیکنی بیشتر از ۶۰ ثانیه پیداش نبوده (پول نزده)، ببازونش
+        for player in self.room.players:
+            last = self.state.last_seen.get(player.user_id)
+
+            if last is None:
+                continue
+
+            if time.time() - last > DISCONNECT_TIMEOUT_SECONDS:
+                opponent = next(
+                    (
+                        p for p in self.room.players
+                        if p.user_id != player.user_id
+                    ),
+                    None,
+                )
+
+                if opponent is not None:
+                    self.state.set_winner(opponent.user_id)
+
+                return
+
+        # ۲. اگه نوبت کسی بیشتر از ۱۰ ثانیه طول کشیده، خودکار براش بازی کن
+        if self.state.turn_started_at is None:
+            return
+
+        elapsed = time.time() - self.state.turn_started_at
+
+        if elapsed <= TURN_TIMEOUT_SECONDS:
+            return
+
+        self._auto_play_for_current_turn()
+
+    def _auto_play_for_current_turn(self):
+        player = self.get_player(self.state.current_turn)
+
+        if player is None:
+            return
+
+        if self.state.trump is None:
+            if player.is_hokm:
+                suit = random.choice(list(Card.SUITS))
+                self.choose_trump(player.user_id, suit)
+            return
+
+        if not player.hand:
+            return
+
+        valid_index = 0
+
+        if self.state.trick_cards:
+            _, first_card = self.state.trick_cards[0]
+
+            for index, hand_card in enumerate(player.hand):
+                if hand_card.suit == first_card.suit:
+                    valid_index = index
+                    break
+
+        self.play_card(player.user_id, valid_index)
