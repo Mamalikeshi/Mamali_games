@@ -7,7 +7,7 @@ from games.hokm.card import Card
 from games.hokm.player import Player
 
 
-TURN_TIMEOUT_SECONDS = 10
+TURN_TIMEOUT_SECONDS = 15
 DISCONNECT_TIMEOUT_SECONDS = 60
 
 
