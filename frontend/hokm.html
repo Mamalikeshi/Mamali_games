@@ -43,11 +43,6 @@
             font-size:18px;
         }
 
-        .button.disabled{
-            background:#444;
-            cursor:default;
-        }
-
         .status{
             margin:20px auto;
             font-size:15px;
@@ -78,20 +73,19 @@
             display:flex;
             flex-wrap:wrap;
             justify-content:center;
-            gap:8px;
+            gap:10px;
             margin:20px 10px;
         }
 
         .card{
-            width:64px;
-            height:94px;
+            width:72px;
+            height:106px;
             background:linear-gradient(160deg, #ffffff, #f2f2f2);
             color:#111;
-            border-radius:9px;
+            border-radius:10px;
             border:1px solid rgba(0,0,0,0.15);
             position:relative;
             display:flex;
-            flex-direction:column;
             align-items:center;
             justify-content:center;
             cursor:pointer;
@@ -108,32 +102,41 @@
             animation: cardWiggle 1.6s ease-in-out infinite;
         }
 
+        @keyframes cardLand{
+            0% { transform: translateY(80px) scale(0.5); opacity:0; }
+            100% { transform: translateY(0) scale(1); opacity:1; }
+        }
+
+        .card.landing{
+            animation: cardLand 0.35s ease-out;
+        }
+
         .card .corner{
             position:absolute;
-            top:4px;
-            left:5px;
+            top:5px;
+            left:6px;
             font-size:12px;
             font-weight:bold;
-            line-height:1.1;
+            line-height:1.15;
             text-align:center;
         }
 
         .card .corner.bottom{
             top:auto;
             left:auto;
-            bottom:4px;
-            right:5px;
+            bottom:5px;
+            right:6px;
             transform:rotate(180deg);
         }
 
         .card .center-symbol{
-            font-size:26px;
+            font-size:30px;
         }
 
         .card .center-face{
-            font-size:30px;
-            width:38px;
-            height:38px;
+            font-size:32px;
+            width:42px;
+            height:42px;
             border-radius:50%;
             display:flex;
             align-items:center;
@@ -147,7 +150,7 @@
             display:flex;
             flex-direction:column;
             justify-content:space-evenly;
-            padding:14px 10px 6px;
+            padding:20px 16px 10px;
             box-sizing:border-box;
         }
 
@@ -161,7 +164,8 @@
         }
 
         .card .pip-row span{
-            font-size:12px;
+            font-size:13px;
+            line-height:1;
         }
 
         .card.red{ color:#c0142c; }
@@ -175,15 +179,15 @@
             display:flex;
             justify-content:center;
             align-items:center;
-            gap:20px;
+            gap:28px;
             margin:20px auto;
-            min-height:110px;
-            width:88%;
-            max-width:320px;
-            border-radius:50% / 30%;
+            min-height:150px;
+            width:94%;
+            max-width:400px;
+            border-radius:50% / 32%;
             background:radial-gradient(ellipse at center, #1e6b3c 0%, #0f4023 100%);
-            border:6px solid #5a3418;
-            box-shadow:inset 0 0 20px rgba(0,0,0,0.5);
+            border:7px solid #5a3418;
+            box-shadow:inset 0 0 24px rgba(0,0,0,0.5);
         }
 
         .score-row{
@@ -311,24 +315,72 @@ function toggleSound() {
     document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
 }
 
+let sharedAudioCtx = null;
+function getAudioCtx() {
+    if (!sharedAudioCtx) {
+        sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return sharedAudioCtx;
+}
+
+// صدای کوتاهِ کشیده‌شدن/انداختن یک برگ روی میز
 function playCardSound() {
     if (soundMuted) return;
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
+        const ctx = getAudioCtx();
+        const bufferSize = ctx.sampleRate * 0.12;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 2200;
         const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = 520;
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-        osc.connect(gain);
+        gain.gain.setValueAtTime(0.35, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        noise.connect(filter);
+        filter.connect(gain);
         gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.2);
+        noise.start();
+    } catch (e) {}
+}
+
+// صدای ریخته شدن/پخش کردن برگ‌ها موقع شروع دست جدید
+function playDealSound() {
+    if (soundMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        for (let i = 0; i < 6; i++) {
+            setTimeout(() => {
+                const bufferSize = ctx.sampleRate * 0.05;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let j = 0; j < bufferSize; j++) {
+                    data[j] = (Math.random() * 2 - 1) * (1 - j / bufferSize);
+                }
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = ctx.createBiquadFilter();
+                filter.type = "highpass";
+                filter.frequency.value = 1500;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.18, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                noise.start();
+            }, i * 70);
+        }
     } catch (e) {}
 }
 
 let lastCardsPlayedCount = null;
+let lastHandNumber = null;
 
 // --- تایمر نوبت ---
 let turnTimerInterval = null;
@@ -426,7 +478,6 @@ async function checkRoom() {
     }
 
     if (room.is_full && iAmReady) {
-        // اگه هر دو آماده باشن، این خودش بازی رو شروع می‌کنه
         await api("/api/game/start", "POST", { room_id: roomId });
     }
 }
@@ -483,7 +534,29 @@ function cardInner(card) {
     return cornerTop + cornerBottom + `<div class="pip-layout">${rowsHtml}</div>`;
 }
 
+// اگه من خالی رو زمین شده باشه (یه برگ اول افتاده باشه)، خال اونو برمی‌گردونه
+function getLeadSuit(state) {
+    const tc = state.trick_cards || [];
+    if (tc.length === 1) return tc[0].card.suit;
+    return null;
+}
+
+// طبق قوانین حکم: اگه خال زمین رو داری، فقط همون خال قابل بازیه
+function computePlayableIndexes(state) {
+    const hand = state.my_hand || [];
+    const leadSuit = getLeadSuit(state);
+    if (!leadSuit) return hand.map((_, i) => i);
+    const matching = [];
+    hand.forEach((c, i) => { if (c.suit === leadSuit) matching.push(i); });
+    return matching.length > 0 ? matching : hand.map((_, i) => i);
+}
+
+let trickFullSince = null;
+let lastState = null;
+
 function renderGame(state) {
+    lastState = state;
+
     lastTurnStartedAt = state.turn_started_at;
     lastServerTime = state.server_time;
     updateTurnTimerDisplay();
@@ -493,6 +566,11 @@ function renderGame(state) {
         playCardSound();
     }
     lastCardsPlayedCount = playedCount;
+
+    if (lastHandNumber !== null && state.hand_number !== lastHandNumber) {
+        playDealSound();
+    }
+    lastHandNumber = state.hand_number;
 
     if (state.winner !== null && state.winner !== undefined) {
         clearInterval(pollTimer);
@@ -506,9 +584,13 @@ function renderGame(state) {
 
     const myTurn = state.current_turn === userId;
 
-    document.getElementById("game-status").innerText = myTurn
-        ? "نوبت توئه"
-        : "منتظر حریف...";
+    document.getElementById("game-status").innerText =
+        (myTurn ? "نوبت توئه" : "منتظر حریف...") + "  |  دست " + (state.hand_number || 1);
+
+    if (state.trump) {
+        document.getElementById("game-status").innerText +=
+            "  |  حکم: " + SUIT_SYMBOLS[state.trump];
+    }
 
     const scoreRow = document.getElementById("score-row");
     scoreRow.innerHTML = "";
@@ -531,31 +613,50 @@ function renderGame(state) {
         scoreRow.appendChild(div);
     });
 
-    document.getElementById("game-status").innerText += "  |  دست " + (state.hand_number || 1);
-
-    const trickArea = document.getElementById("trick-area");
-    trickArea.innerHTML = "";
-    (state.trick_cards || []).forEach((tc) => {
-        const div = document.createElement("div");
-        div.className = "card" + (RED_SUITS.includes(tc.card.suit) ? " red" : "");
-        div.innerHTML = cardInner(tc.card);
-        trickArea.appendChild(div);
-    });
+    const trickCards = state.trick_cards || [];
+    if (trickCards.length === 2) {
+        if (trickFullSince === null) {
+            trickFullSince = Date.now();
+            setTimeout(() => {
+                if (lastState) renderTrickAndHand(lastState);
+            }, 1500);
+        }
+    } else {
+        trickFullSince = null;
+    }
 
     const trumpPicker = document.getElementById("trump-picker");
     const needsTrump = !state.trump && state.my_is_hokm && myTurn;
     trumpPicker.style.display = needsTrump ? "flex" : "none";
 
-    if (state.trump) {
-        document.getElementById("game-status").innerText +=
-            "  |  حکم: " + SUIT_SYMBOLS[state.trump];
+    renderTrickAndHand(state);
+}
+
+function renderTrickAndHand(state) {
+    const myTurn = state.current_turn === userId;
+    const needsTrump = !state.trump && state.my_is_hokm && myTurn;
+    const trickCards = state.trick_cards || [];
+    const tableFull = trickCards.length === 2;
+    const stillShowing = tableFull && trickFullSince && (Date.now() - trickFullSince < 1500);
+
+    const trickArea = document.getElementById("trick-area");
+    trickArea.innerHTML = "";
+    if (!tableFull || stillShowing) {
+        trickCards.forEach((tc) => {
+            const div = document.createElement("div");
+            div.className = "card landing" + (RED_SUITS.includes(tc.card.suit) ? " red" : "");
+            div.innerHTML = cardInner(tc.card);
+            trickArea.appendChild(div);
+        });
     }
 
+    const playableIndexes = computePlayableIndexes(state);
     const handDiv = document.getElementById("hand");
     handDiv.innerHTML = "";
     (state.my_hand || []).forEach((card, index) => {
         const div = document.createElement("div");
-        const canPlay = myTurn && state.trump && !needsTrump;
+        const canPlay = myTurn && state.trump && !needsTrump && !stillShowing &&
+            playableIndexes.includes(index);
         div.className = "card" +
             (RED_SUITS.includes(card.suit) ? " red" : "") +
             (canPlay ? " playable" : " disabled");
