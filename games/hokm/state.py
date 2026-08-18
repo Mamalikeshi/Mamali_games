@@ -13,7 +13,7 @@ class GameState:
 
         self.trick_wins = {}
 
-        # امتیاز کلی بازی: تعداد دست‌هایی که هر بازیکن برده
+        # امتیاز کلی بازی (با احتساب کُت): اولین کسی که به ۷ برسه برنده‌ست
         self.hand_wins = {}
         self.hand_number = 1
 
@@ -21,6 +21,12 @@ class GameState:
 
         # برای این‌که فرانت‌اند بتونه هر برگ جدید رو تشخیص بده و صدا پخش کنه
         self.cards_played_count = 0
+
+        # وقتی یه دست (trick) کامل میشه، ۲ ثانیه صبر می‌کنیم تا هر دو
+        # بازیکن ببیننش، بعد پاک میشه و نوبت/دست بعدی شروع میشه.
+        # تا وقتی این مقدار خالی نشده، هیچ حرکتی (بازی کردن برگ) قبول نمیشه.
+        self.trick_completed_at = None
+        self.pending_trick_winner = None
 
         # برای تایمر نوبت و تشخیص قطع ارتباط
         self.turn_started_at = None
@@ -55,6 +61,10 @@ class GameState:
     def clear_trick(self):
         self.trick_cards = []
 
+    def mark_trick_completed(self, winner_user_id: int):
+        self.trick_completed_at = time.time()
+        self.pending_trick_winner = winner_user_id
+
     def start_new_hand(self):
         self.trump = None
         self.trick_cards = []
@@ -78,6 +88,7 @@ class GameState:
             "turn_started_at": self.turn_started_at,
             "server_time": time.time(),
             "cards_played_count": self.cards_played_count,
+            "holding_trick": self.trick_completed_at is not None,
             "trick_cards": [
                 {
                     "user_id": user_id,
