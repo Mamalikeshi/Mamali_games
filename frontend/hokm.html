@@ -14,12 +14,12 @@
             color:white;
             font-family:tahoma;
             text-align:center;
-            padding-bottom:40px;
+            padding-bottom:12px;
         }
 
         h1{
-            margin-top:30px;
-            font-size:22px;
+            margin-top:14px;
+            font-size:18px;
         }
 
         input{
@@ -44,28 +44,28 @@
         }
 
         .status{
-            margin:20px auto;
-            font-size:15px;
+            margin:8px auto;
+            font-size:14px;
             color:#aaa;
-            max-width:280px;
+            max-width:320px;
         }
 
         .suit-row{
             display:flex;
             justify-content:center;
             gap:10px;
-            margin:15px auto;
+            margin:10px auto;
         }
 
         .suit-btn{
-            width:55px;
-            height:55px;
+            width:50px;
+            height:50px;
             border-radius:10px;
             background:#2a2a2a;
             display:flex;
             align-items:center;
             justify-content:center;
-            font-size:26px;
+            font-size:24px;
             cursor:pointer;
         }
 
@@ -73,23 +73,31 @@
             display:flex;
             flex-wrap:wrap;
             justify-content:center;
-            gap:10px;
-            margin:20px 10px;
+            gap:5px;
+            margin:10px 6px;
         }
 
         .card{
-            width:72px;
-            height:106px;
             background:linear-gradient(160deg, #ffffff, #f2f2f2);
             color:#111;
-            border-radius:10px;
+            border-radius:8px;
             border:1px solid rgba(0,0,0,0.15);
             position:relative;
             display:flex;
             align-items:center;
             justify-content:center;
             cursor:pointer;
-            box-shadow:0 3px 6px rgba(0,0,0,0.5);
+            box-shadow:0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .hand .card{
+            width:50px;
+            height:73px;
+        }
+
+        .trick-area .card{
+            width:70px;
+            height:102px;
         }
 
         @keyframes cardWiggle{
@@ -103,45 +111,59 @@
         }
 
         @keyframes cardLand{
-            0% { transform: translateY(80px) scale(0.5); opacity:0; }
+            0% { transform: translateY(70px) scale(0.5); opacity:0; }
             100% { transform: translateY(0) scale(1); opacity:1; }
         }
 
         .card.landing{
-            animation: cardLand 0.35s ease-out;
+            animation: cardLand 0.3s ease-out;
         }
 
         .card .corner{
             position:absolute;
+            top:3px;
+            left:4px;
+            font-size:10px;
+            font-weight:bold;
+            line-height:1.1;
+            text-align:center;
+        }
+
+        .trick-area .card .corner{
+            font-size:12px;
             top:5px;
             left:6px;
-            font-size:12px;
-            font-weight:bold;
-            line-height:1.15;
-            text-align:center;
         }
 
         .card .corner.bottom{
             top:auto;
             left:auto;
-            bottom:5px;
-            right:6px;
+            bottom:3px;
+            right:4px;
             transform:rotate(180deg);
         }
 
-        .card .center-symbol{
-            font-size:30px;
+        .trick-area .card .corner.bottom{
+            bottom:5px;
+            right:6px;
         }
 
-        .card .center-face{
-            font-size:32px;
-            width:42px;
-            height:42px;
-            border-radius:50%;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:rgba(0,0,0,0.06);
+        .card .center-symbol{
+            font-size:22px;
+        }
+
+        .trick-area .card .center-symbol{
+            font-size:28px;
+        }
+
+        .card .face-icon{
+            width:26px;
+            height:34px;
+        }
+
+        .trick-area .card .face-icon{
+            width:34px;
+            height:44px;
         }
 
         .card .pip-layout{
@@ -150,8 +172,12 @@
             display:flex;
             flex-direction:column;
             justify-content:space-evenly;
-            padding:20px 16px 10px;
+            padding:12px 9px 5px;
             box-sizing:border-box;
+        }
+
+        .trick-area .card .pip-layout{
+            padding:18px 14px 8px;
         }
 
         .card .pip-row{
@@ -164,8 +190,12 @@
         }
 
         .card .pip-row span{
-            font-size:13px;
+            font-size:10px;
             line-height:1;
+        }
+
+        .trick-area .card .pip-row span{
+            font-size:13px;
         }
 
         .card.red{ color:#c0142c; }
@@ -179,46 +209,45 @@
             display:flex;
             justify-content:center;
             align-items:center;
-            gap:28px;
-            margin:20px auto;
-            min-height:150px;
-            width:94%;
-            max-width:400px;
+            gap:22px;
+            margin:10px auto;
+            min-height:120px;
+            width:92%;
+            max-width:360px;
             border-radius:50% / 32%;
             background:radial-gradient(ellipse at center, #1e6b3c 0%, #0f4023 100%);
-            border:7px solid #5a3418;
-            box-shadow:inset 0 0 24px rgba(0,0,0,0.5);
+            border:6px solid #5a3418;
+            box-shadow:inset 0 0 20px rgba(0,0,0,0.5);
         }
 
         .score-row{
             display:flex;
             justify-content:center;
-            gap:30px;
-            margin:15px auto;
-            font-size:15px;
+            gap:26px;
+            margin:8px auto;
+            font-size:14px;
         }
 
         .back-link{
             position:absolute;
-            top:20px;
-            right:20px;
-            font-size:14px;
+            top:14px;
+            right:16px;
+            font-size:13px;
             color:#aaa;
             cursor:pointer;
         }
 
         .sound-toggle{
             position:absolute;
-            top:16px;
-            left:20px;
-            font-size:22px;
+            top:11px;
+            left:16px;
+            font-size:20px;
             cursor:pointer;
         }
 
         .turn-timer{
-            font-size:14px;
+            font-size:13px;
             color:#f2a13c;
-            margin-top:4px;
         }
     </style>
 </head>
@@ -323,7 +352,6 @@ function getAudioCtx() {
     return sharedAudioCtx;
 }
 
-// صدای کوتاهِ کشیده‌شدن/انداختن یک برگ روی میز
 function playCardSound() {
     if (soundMuted) return;
     try {
@@ -349,7 +377,6 @@ function playCardSound() {
     } catch (e) {}
 }
 
-// صدای ریخته شدن/پخش کردن برگ‌ها موقع شروع دست جدید
 function playDealSound() {
     if (soundMuted) return;
     try {
@@ -381,11 +408,13 @@ function playDealSound() {
 
 let lastCardsPlayedCount = null;
 let lastHandNumber = null;
+let lastTrickCardCount = 0;
 
 // --- تایمر نوبت ---
 let turnTimerInterval = null;
 let lastTurnStartedAt = null;
 let lastServerTime = null;
+const TURN_SECONDS = 20;
 
 function startTurnTimerTicker() {
     clearInterval(turnTimerInterval);
@@ -399,7 +428,7 @@ function updateTurnTimerDisplay() {
     }
     const localElapsed = (Date.now() / 1000) - lastServerTime;
     const elapsed = (lastServerTime - lastTurnStartedAt) + localElapsed;
-    const remaining = Math.max(0, Math.ceil(15 - elapsed));
+    const remaining = Math.max(0, Math.ceil(TURN_SECONDS - elapsed));
     document.getElementById("turn-timer").innerText = "⏱ " + remaining + " ثانیه";
 }
 
@@ -506,6 +535,13 @@ const PIP_PATTERNS = {
     10: ["LR", "LR", "C", "C", "LR", "LR"],
 };
 
+// آیکون‌های اصیلِ خودمون برای سرباز/بی‌بی/شاه (رنگ از currentColor میاد، پس با کلاس red هماهنگه)
+const FACE_ICONS = {
+    K: '<svg class="face-icon" viewBox="0 0 40 52"><path d="M8 10 L14 2 L20 10 L26 2 L32 10 L30 17 L10 17 Z" fill="currentColor"/><circle cx="20" cy="24" r="7" fill="currentColor"/><path d="M8 45 Q20 30 32 45 L32 50 L8 50 Z" fill="currentColor"/><rect x="19" y="29" width="2" height="19" fill="currentColor"/></svg>',
+    Q: '<svg class="face-icon" viewBox="0 0 40 52"><path d="M10 13 Q20 3 30 13 L28 17 L12 17 Z" fill="currentColor"/><circle cx="14" cy="10" r="2" fill="currentColor"/><circle cx="20" cy="7" r="2" fill="currentColor"/><circle cx="26" cy="10" r="2" fill="currentColor"/><circle cx="20" cy="24" r="7" fill="currentColor"/><path d="M8 46 Q20 29 32 46 L32 50 L8 50 Z" fill="currentColor"/><circle cx="20" cy="40" r="3" fill="currentColor" opacity="0.55"/></svg>',
+    J: '<svg class="face-icon" viewBox="0 0 40 52"><path d="M10 14 Q20 4 30 14 L35 7 L30 18 L10 18 Z" fill="currentColor"/><circle cx="20" cy="25" r="7" fill="currentColor"/><path d="M9 46 Q20 32 31 46 L31 50 L9 50 Z" fill="currentColor"/></svg>',
+};
+
 function cardInner(card) {
     const symbol = SUIT_SYMBOLS[card.suit];
     const cornerTop = `<div class="corner">${card.rank}<br>${symbol}</div>`;
@@ -515,10 +551,8 @@ function cardInner(card) {
         return cornerTop + cornerBottom + `<div class="center-symbol">${symbol}</div>`;
     }
 
-    const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
-    if (faceEmojis[card.rank]) {
-        return cornerTop + cornerBottom +
-            `<div class="center-face">${faceEmojis[card.rank]}</div>`;
+    if (FACE_ICONS[card.rank]) {
+        return cornerTop + cornerBottom + FACE_ICONS[card.rank];
     }
 
     const rows = PIP_PATTERNS[card.rank_value] || [];
@@ -534,14 +568,12 @@ function cardInner(card) {
     return cornerTop + cornerBottom + `<div class="pip-layout">${rowsHtml}</div>`;
 }
 
-// اگه من خالی رو زمین شده باشه (یه برگ اول افتاده باشه)، خال اونو برمی‌گردونه
 function getLeadSuit(state) {
     const tc = state.trick_cards || [];
     if (tc.length === 1) return tc[0].card.suit;
     return null;
 }
 
-// طبق قوانین حکم: اگه خال زمین رو داری، فقط همون خال قابل بازیه
 function computePlayableIndexes(state) {
     const hand = state.my_hand || [];
     const leadSuit = getLeadSuit(state);
@@ -551,12 +583,7 @@ function computePlayableIndexes(state) {
     return matching.length > 0 ? matching : hand.map((_, i) => i);
 }
 
-let trickFullSince = null;
-let lastState = null;
-
 function renderGame(state) {
-    lastState = state;
-
     lastTurnStartedAt = state.turn_started_at;
     lastServerTime = state.server_time;
     updateTurnTimerDisplay();
@@ -583,14 +610,17 @@ function renderGame(state) {
     }
 
     const myTurn = state.current_turn === userId;
+    const holding = !!state.holding_trick;
 
     document.getElementById("game-status").innerText =
-        (myTurn ? "نوبت توئه" : "منتظر حریف...") + "  |  دست " + (state.hand_number || 1);
+        (myTurn && !holding ? "نوبت توئه" : "منتظر حریف...") + "  |  دست " + (state.hand_number || 1);
 
     if (state.trump) {
         document.getElementById("game-status").innerText +=
             "  |  حکم: " + SUIT_SYMBOLS[state.trump];
     }
+
+    document.getElementById("turn-timer").style.visibility = holding ? "hidden" : "visible";
 
     const scoreRow = document.getElementById("score-row");
     scoreRow.innerHTML = "";
@@ -608,54 +638,33 @@ function renderGame(state) {
         const label = (uid === userId) ? "من" : "حریف";
         const div = document.createElement("div");
         div.innerHTML =
-            label + "<br>دست‌ها: " + (handWins[uid] || 0) + "/7" +
+            label + "<br>امتیاز: " + (handWins[uid] || 0) + "/7" +
             "<br><span style='font-size:12px;color:#777'>این دست: " + (trickWins[uid] || 0) + "</span>";
         scoreRow.appendChild(div);
     });
 
     const trickCards = state.trick_cards || [];
-    if (trickCards.length === 2) {
-        if (trickFullSince === null) {
-            trickFullSince = Date.now();
-            setTimeout(() => {
-                if (lastState) renderTrickAndHand(lastState);
-            }, 1500);
-        }
-    } else {
-        trickFullSince = null;
-    }
-
-    const trumpPicker = document.getElementById("trump-picker");
-    const needsTrump = !state.trump && state.my_is_hokm && myTurn;
-    trumpPicker.style.display = needsTrump ? "flex" : "none";
-
-    renderTrickAndHand(state);
-}
-
-function renderTrickAndHand(state) {
-    const myTurn = state.current_turn === userId;
-    const needsTrump = !state.trump && state.my_is_hokm && myTurn;
-    const trickCards = state.trick_cards || [];
-    const tableFull = trickCards.length === 2;
-    const stillShowing = tableFull && trickFullSince && (Date.now() - trickFullSince < 1500);
 
     const trickArea = document.getElementById("trick-area");
     trickArea.innerHTML = "";
-    if (!tableFull || stillShowing) {
-        trickCards.forEach((tc) => {
-            const div = document.createElement("div");
-            div.className = "card landing" + (RED_SUITS.includes(tc.card.suit) ? " red" : "");
-            div.innerHTML = cardInner(tc.card);
-            trickArea.appendChild(div);
-        });
-    }
+    trickCards.forEach((tc) => {
+        const div = document.createElement("div");
+        div.className = "card landing" + (RED_SUITS.includes(tc.card.suit) ? " red" : "");
+        div.innerHTML = cardInner(tc.card);
+        trickArea.appendChild(div);
+    });
+    lastTrickCardCount = trickCards.length;
+
+    const trumpPicker = document.getElementById("trump-picker");
+    const needsTrump = !state.trump && state.my_is_hokm && myTurn && !holding;
+    trumpPicker.style.display = needsTrump ? "flex" : "none";
 
     const playableIndexes = computePlayableIndexes(state);
     const handDiv = document.getElementById("hand");
     handDiv.innerHTML = "";
     (state.my_hand || []).forEach((card, index) => {
         const div = document.createElement("div");
-        const canPlay = myTurn && state.trump && !needsTrump && !stillShowing &&
+        const canPlay = myTurn && state.trump && !needsTrump && !holding &&
             playableIndexes.includes(index);
         div.className = "card" +
             (RED_SUITS.includes(card.suit) ? " red" : "") +
@@ -706,28 +715,20 @@ async function playCard(index) {
     }
 }
 
-// اگه کاربر وسط یه بازی فعال بوده و صفحه رو دوباره باز کرده، خودکار برش می‌گردونیم
+// اگه کاربر وسط یه بازیِ شروع‌شده بوده و صفحه رو دوباره باز کرده، خودکار برش می‌گردونیم.
+// اگه بازی هنوز شروع نشده بود (مثلاً حریف قبلی هیچ‌وقت آماده نشد و رفت)، برنمی‌گردونیمش
+// به صفحه‌ی انتظار قدیمی؛ می‌ذاریم خودش دوباره «پیدا کردن حریف» رو بزنه.
 (async function checkForActiveRoom() {
     const res = await api("/api/room/my-active/" + userId, "GET");
 
     if (!res.success || !res.room_id) return;
 
-    roomId = res.room_id;
     const room = res.room;
-    const me = (room.players || []).find((p) => p.user_id === userId);
-    iAmReady = me ? me.is_ready : false;
+    if (!room || !room.is_started) return;
 
-    if (room.is_started) {
-        showScreen("game");
-        startGamePoll();
-    } else {
-        showScreen("waiting");
-        if (iAmReady) {
-            document.getElementById("start-button").style.display = "none";
-            document.getElementById("waiting-status").innerText = "منتظر آماده شدن حریف...";
-        }
-        startWaitingPoll();
-    }
+    roomId = res.room_id;
+    showScreen("game");
+    startGamePoll();
 })();
 
 </script>
