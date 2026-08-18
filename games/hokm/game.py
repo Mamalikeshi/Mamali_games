@@ -7,8 +7,9 @@ from games.hokm.card import Card
 from games.hokm.player import Player
 
 
-TURN_TIMEOUT_SECONDS = 15
+TURN_TIMEOUT_SECONDS = 20
 DISCONNECT_TIMEOUT_SECONDS = 60
+TRICK_HOLD_SECONDS = 2
 
 
 class HokmGame:
@@ -40,6 +41,9 @@ class HokmGame:
         return True
 
     def choose_trump(self, user_id: int, suit: str):
+        if self.state.trick_completed_at is not None:
+            return False
+
         if self.state.trump is not None:
             return False
 
@@ -74,6 +78,10 @@ class HokmGame:
         return True
 
     def play_card(self, user_id: int, card_index: int):
+        # تا وقتی داریم دستِ قبلی رو (که کامل شده) نشون می‌دیم، هیچ حرکتی قبول نیست
+        if self.state.trick_completed_at is not None:
+            return False
+
         if self.state.trump is None:
             return False
 
@@ -87,11 +95,6 @@ class HokmGame:
 
         if card_index < 0 or card_index >= len(player.hand):
             return False
-
-        # دست قبلی کامل شده بود (هر دو برگ روی زمین دیده شدن)؛
-        # حالا که بازیکن بعدی داره برگ جدید میندازه، وقتشه پاکش کنیم
-        if self.state.is_trick_complete():
-            self.state.clear_trick()
 
         card = player.hand[card_index]
 
@@ -121,13 +124,10 @@ class HokmGame:
 
             self.state.add_trick_win(winner)
 
-            # نکته: اینجا عمداً دست رو پاک نمی‌کنیم، تا هر دو بازیکن
-            # فرصت ببینن هر دو برگ روی زمین چی بودن (تا حرکت بعدی)
-
-            if self._check_hand_finished():
-                self._finish_hand(winner)
-            else:
-                self.state.set_turn(winner)
+            # اینجا عمداً دست رو پاک نمی‌کنیم و نوبت رو هم عوض نمی‌کنیم؛
+            # چند ثانیه صبر می‌کنیم (توی check_timeouts) تا هر دو بازیکن
+            # فرصت ببینن هر دو برگ روی زمین چی بودن
+            self.state.mark_trick_completed(winner)
 
         else:
             for next_player in self.room.players:
@@ -166,8 +166,38 @@ class HokmGame:
         return False
 
     def _finish_hand(self, hand_winner: int):
+        opponent = next(
+            (
+                p for p in self.room.players
+                if p.user_id != hand_winner
+            ),
+            None,
+        )
+
+        opponent_tricks = (
+            self.state.trick_wins.get(opponent.user_id, 0)
+            if opponent is not None else 0
+        )
+
+        hokm_player = next(
+            (p for p in self.room.players if p.is_hokm),
+            None,
+        )
+
+        winner_is_hokm = (
+            hokm_player is not None
+            and hokm_player.user_id == hand_winner
+        )
+
+        # قانون کُت: اگه یه طرف تمام برگ‌های اون دست رو ببره و حریف
+        # حتی یه برگ هم نگیره، امتیاز بیشتری می‌گیره
+        if opponent_tricks == 0:
+            points = 2 if winner_is_hokm else 3
+        else:
+            points = 1
+
         self.state.hand_wins[hand_winner] = (
-            self.state.hand_wins.get(hand_winner, 0) + 1
+            self.state.hand_wins.get(hand_winner, 0) + points
         )
 
         if self.state.hand_wins[hand_winner] >= 7:
@@ -209,6 +239,22 @@ class HokmGame:
         if self.state.winner is not None:
             return
 
+        # ۰. اگه یه دست (trick) کامل شده، صبر می‌کنیم تا هر دو نفر ببیننش
+        if self.state.trick_completed_at is not None:
+            if time.time() - self.state.trick_completed_at >= TRICK_HOLD_SECONDS:
+                winner = self.state.pending_trick_winner
+
+                self.state.clear_trick()
+                self.state.trick_completed_at = None
+                self.state.pending_trick_winner = None
+
+                if self._check_hand_finished():
+                    self._finish_hand(winner)
+                else:
+                    self.state.set_turn(winner)
+
+            return
+
         # ۱. اگه بازیکنی بیشتر از ۶۰ ثانیه پیداش نبوده (پول نزده)، ببازونش
         for player in self.room.players:
             last = self.state.last_seen.get(player.user_id)
@@ -230,7 +276,7 @@ class HokmGame:
 
                 return
 
-        # ۲. اگه نوبت کسی بیشتر از ۱۰ ثانیه طول کشیده، خودکار براش بازی کن
+        # ۲. اگه نوبت کسی بیشتر از ۲۰ ثانیه طول کشیده، خودکار براش بازی کن
         if self.state.turn_started_at is None:
             return
 
