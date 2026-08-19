@@ -337,3 +337,49 @@ def test_king_and_queen_only_capture_same_rank():
 
     assert ("hearts", "5") in remaining
     assert ("spades", "K") in remaining
+def test_normal_sour_gives_5_points():
+
+    room = Room(room_id="test-normal-sour")
+
+    player1 = Player(
+        user_id=1,
+        username="player1",
+    )
+
+    player2 = Player(
+        user_id=2,
+        username="player2",
+    )
+
+    assert room.add_player(player1)
+    assert room.add_player(player2)
+
+    game = ChaharBargGame(room)
+
+    # تمام زمین را طوری می‌چینیم که 9 + 2 = 11 شود.
+    game.state.table_cards = [
+        Card("clubs", "2"),
+    ]
+
+    player1.hand = [
+        Card("hearts", "9"),
+    ]
+
+    player2.hand = []
+
+    game.state.current_turn = player1.user_id
+
+    # این دور آخرین پخش نیست.
+    game.state.is_final_deal = False
+
+    assert game.play_card(
+        player1.user_id,
+        0,
+    )
+
+    # چون کل زمین با 9 جمع شده،
+    # باید سور معمولی ثبت شده باشد.
+    assert (
+        game.state.sour_points[player1.user_id]
+        == 5
+    )
