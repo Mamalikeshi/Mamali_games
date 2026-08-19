@@ -147,3 +147,87 @@ def test_chahar_barg_multiple_11_options_require_player_selection():
         game.state.current_turn
         == player2.user_id
     )
+def test_jack_captures_everything_except_king_and_queen():
+
+    room = Room(room_id="test-jack")
+
+    player1 = Player(
+        user_id=1,
+        username="player1",
+    )
+
+    player2 = Player(
+        user_id=2,
+        username="player2",
+    )
+
+    assert room.add_player(player1)
+    assert room.add_player(player2)
+
+    game = ChaharBargGame(room)
+
+    # ---------------------------------------------------------
+    # کارت‌های روی زمین
+    # ---------------------------------------------------------
+
+    game.state.table_cards = [
+        Card("clubs", "2"),
+        Card("hearts", "7"),
+        Card("spades", "J"),
+        Card("diamonds", "K"),
+        Card("hearts", "Q"),
+    ]
+
+    player1.hand = [
+        Card("clubs", "J"),
+    ]
+
+    player2.hand = []
+
+    game.state.current_turn = player1.user_id
+
+    # ---------------------------------------------------------
+    # بازیکن سرباز بازی می‌کند.
+    # ---------------------------------------------------------
+
+    assert game.play_card(
+        player1.user_id,
+        0,
+    )
+
+    # ---------------------------------------------------------
+    # سرباز باید این کارت‌ها را جمع کرده باشد:
+    #
+    # 2 گشنیز
+    # 7 دل
+    # J پیک
+    # J بازی‌شده
+    #
+    # شاه و بی‌بی نباید جمع شده باشند.
+    # ---------------------------------------------------------
+
+    assert len(player1.captured) == 4
+
+    captured = [
+        (card.suit, card.rank)
+        for card in player1.captured
+    ]
+
+    assert ("clubs", "2") in captured
+    assert ("hearts", "7") in captured
+    assert ("spades", "J") in captured
+    assert ("clubs", "J") in captured
+
+    # ---------------------------------------------------------
+    # شاه و بی‌بی باید روی زمین باقی مانده باشند.
+    # ---------------------------------------------------------
+
+    assert len(game.state.table_cards) == 2
+
+    remaining = [
+        (card.suit, card.rank)
+        for card in game.state.table_cards
+    ]
+
+    assert ("diamonds", "K") in remaining
+    assert ("hearts", "Q") in remaining
