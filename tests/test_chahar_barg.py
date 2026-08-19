@@ -383,3 +383,56 @@ def test_normal_sour_gives_5_points():
         game.state.sour_points[player1.user_id]
         == 5
     )
+def test_jack_sour_gives_10_points():
+
+    room = Room(room_id="test-jack-sour")
+
+    player1 = Player(
+        user_id=1,
+        username="player1",
+    )
+
+    player2 = Player(
+        user_id=2,
+        username="player2",
+    )
+
+    assert room.add_player(player1)
+    assert room.add_player(player2)
+
+    game = ChaharBargGame(room)
+
+    # ---------------------------------------------------------
+    # زمین فقط یک کارت عددی دارد.
+    # سرباز آن را جمع می‌کند و زمین کاملاً خالی می‌شود.
+    # ---------------------------------------------------------
+
+    game.state.table_cards = [
+        Card("clubs", "7"),
+    ]
+
+    player1.hand = [
+        Card("hearts", "J"),
+    ]
+
+    player2.hand = []
+
+    game.state.current_turn = player1.user_id
+
+    # این آخرین پخش نیست.
+    game.state.is_final_deal = False
+
+    assert game.play_card(
+        player1.user_id,
+        0,
+    )
+
+    # ---------------------------------------------------------
+    # چون سرباز تمام زمین را جمع کرده،
+    # باید سور سرباز ثبت شود.
+    # ---------------------------------------------------------
+
+    assert (
+        game.state.sour_points[player1.user_id]
+        == 10
+    )
