@@ -231,3 +231,109 @@ def test_jack_captures_everything_except_king_and_queen():
 
     assert ("diamonds", "K") in remaining
     assert ("hearts", "Q") in remaining
+def test_king_and_queen_only_capture_same_rank():
+
+    room = Room(room_id="test-king-queen")
+
+    player1 = Player(
+        user_id=1,
+        username="player1",
+    )
+
+    player2 = Player(
+        user_id=2,
+        username="player2",
+    )
+
+    assert room.add_player(player1)
+    assert room.add_player(player2)
+
+    game = ChaharBargGame(room)
+
+    # ---------------------------------------------------------
+    # تست شاه
+    # ---------------------------------------------------------
+
+    game.state.table_cards = [
+        Card("clubs", "K"),
+        Card("hearts", "7"),
+        Card("spades", "Q"),
+    ]
+
+    player1.hand = [
+        Card("diamonds", "K"),
+    ]
+
+    player2.hand = []
+
+    game.state.current_turn = player1.user_id
+
+    assert game.play_card(
+        player1.user_id,
+        0,
+    )
+
+    # شاه باید فقط شاه را جمع کرده باشد.
+    assert len(player1.captured) == 2
+
+    captured = [
+        (card.suit, card.rank)
+        for card in player1.captured
+    ]
+
+    assert ("clubs", "K") in captured
+    assert ("diamonds", "K") in captured
+
+    # 7 و Q باید روی زمین بمانند.
+    assert len(game.state.table_cards) == 2
+
+    remaining = [
+        (card.suit, card.rank)
+        for card in game.state.table_cards
+    ]
+
+    assert ("hearts", "7") in remaining
+    assert ("spades", "Q") in remaining
+
+    # ---------------------------------------------------------
+    # تست بی‌بی
+    # ---------------------------------------------------------
+
+    game.state.table_cards = [
+        Card("clubs", "Q"),
+        Card("hearts", "5"),
+        Card("spades", "K"),
+    ]
+
+    player1.hand = [
+        Card("diamonds", "Q"),
+    ]
+
+    game.state.current_turn = player1.user_id
+
+    assert game.play_card(
+        player1.user_id,
+        0,
+    )
+
+    # بی‌بی باید فقط بی‌بی را جمع کرده باشد.
+    assert len(player1.captured) == 4
+
+    captured = [
+        (card.suit, card.rank)
+        for card in player1.captured
+    ]
+
+    assert ("clubs", "Q") in captured
+    assert ("diamonds", "Q") in captured
+
+    # 5 و K باید باقی مانده باشند.
+    assert len(game.state.table_cards) == 2
+
+    remaining = [
+        (card.suit, card.rank)
+        for card in game.state.table_cards
+    ]
+
+    assert ("hearts", "5") in remaining
+    assert ("spades", "K") in remaining
