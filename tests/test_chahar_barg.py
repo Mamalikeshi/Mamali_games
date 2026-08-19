@@ -436,3 +436,60 @@ def test_jack_sour_gives_10_points():
         game.state.sour_points[player1.user_id]
         == 10
     )
+def test_final_8_cards_do_not_give_sour():
+
+    room = Room(room_id="test-final-8")
+
+    player1 = Player(
+        user_id=1,
+        username="player1",
+    )
+
+    player2 = Player(
+        user_id=2,
+        username="player2",
+    )
+
+    assert room.add_player(player1)
+    assert room.add_player(player2)
+
+    game = ChaharBargGame(room)
+
+    # ---------------------------------------------------------
+    # زمین را طوری می‌چینیم که سرباز تمام زمین را جمع کند.
+    # ---------------------------------------------------------
+
+    game.state.table_cards = [
+        Card("clubs", "7"),
+    ]
+
+    player1.hand = [
+        Card("hearts", "J"),
+    ]
+
+    player2.hand = []
+
+    game.state.current_turn = player1.user_id
+
+    # ---------------------------------------------------------
+    # این دست، آخرین پخش یعنی ۸ کارت پایانی است.
+    # ---------------------------------------------------------
+
+    game.state.is_final_deal = True
+
+    assert game.play_card(
+        player1.user_id,
+        0,
+    )
+
+    # ---------------------------------------------------------
+    # سرباز زمین را جمع کرده، اما نباید سور ثبت شود.
+    # ---------------------------------------------------------
+
+    assert (
+        game.state.sour_points.get(
+            player1.user_id,
+            0,
+        )
+        == 0
+    )
