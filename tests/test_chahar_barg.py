@@ -493,3 +493,15 @@ def test_final_8_cards_do_not_give_sour():
         )
         == 0
     )
+def test_round_card_scores():
+
+    captured_cards = [
+        Card("diamonds", "10"),  # 3
+        Card("clubs", "2"),      # 2
+        Card("hearts", "J"),     # 1
+        Card("spades", "J"),     # 1
+        Card("hearts", "A"),     # 1
+        Card("clubs", "A"),      # 1
+    ]
+
+    assert tally_round_score(captured_cards) == 9
