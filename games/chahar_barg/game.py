@@ -505,26 +505,33 @@ class ChaharBargGame:
                 ),
         }
 
-        # -----------------------------------------------------
+                # -----------------------------------------------------
         # هفت خاج
+        #
+        # هر بازیکنی که بیشترین تعداد کارت گشنیز
+        # را در پایان دور جمع کرده باشد،
+        # ۷ امتیاز هفت خاج می‌گیرد.
         # -----------------------------------------------------
 
-        if has_haft_khaj(
+        player_a_clubs = count_clubs(
             self.player_a.captured
-        ):
+        )
+
+        player_b_clubs = count_clubs(
+            self.player_b.captured
+        )
+
+        if player_a_clubs > player_b_clubs:
 
             round_points[
                 self.player_a.user_id
             ] += HAFT_KHAJ_POINTS
 
-        elif has_haft_khaj(
-            self.player_b.captured
-        ):
+        elif player_b_clubs > player_a_clubs:
 
             round_points[
                 self.player_b.user_id
             ] += HAFT_KHAJ_POINTS
-
         # -----------------------------------------------------
         # امتیاز سور
         # -----------------------------------------------------
