@@ -430,16 +430,13 @@ def tally_round_score(
     return score
 
 
-def has_haft_khaj(
-    captured_cards: list[Card],
-) -> bool:
+def count_clubs(captured_cards: list[Card]) -> int:
     """
-    بررسی می‌کند آیا بازیکن 7 گشنیز را در کارت‌های
-    جمع‌شده دارد یا خیر.
+    تعداد کارت‌های گشنیز جمع‌شده توسط بازیکن را می‌شمارد.
     """
 
-    return any(
-        card.suit == "clubs"
-        and card.rank == "7"
+    return sum(
+        1
         for card in captured_cards
+        if card.suit == "clubs"
     )
