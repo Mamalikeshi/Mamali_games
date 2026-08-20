@@ -20,7 +20,7 @@ from games.chahar_barg.rules import (
     resolve_move,
     apply_capture_option,
     tally_round_score,
-    has_haft_khaj,
+    count_clubs,
     SOUR_NORMAL_POINTS,
     SOUR_JACK_POINTS,
     SOUR_DISABLE_THRESHOLD,
