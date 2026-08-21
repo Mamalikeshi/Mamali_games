@@ -156,18 +156,28 @@
             font-size:28px;
         }
 
+        .card .face-icon{
+            width:26px;
+            height:34px;
+        }
+
+        .trick-area .card .face-icon{
+            width:34px;
+            height:44px;
+        }
+
         .card .pip-layout{
             width:100%;
             height:100%;
             display:flex;
             flex-direction:column;
             justify-content:space-evenly;
-            padding:12px 9px 5px;
+            padding:17px 9px 17px;
             box-sizing:border-box;
         }
 
         .trick-area .card .pip-layout{
-            padding:18px 14px 8px;
+            padding:22px 14px 22px;
         }
 
         .card .pip-row{
@@ -196,18 +206,18 @@
         }
 
         .trick-area{
+            position:relative;
             display:flex;
             justify-content:center;
             align-items:center;
-            gap:22px;
-            margin:10px auto;
-            min-height:120px;
-            width:92%;
-            max-width:360px;
-            border-radius:50% / 32%;
-            background:radial-gradient(ellipse at center, #1e6b3c 0%, #0f4023 100%);
-            border:6px solid #5a3418;
-            box-shadow:inset 0 0 20px rgba(0,0,0,0.5);
+            margin:12px auto;
+            width:88%;
+            max-width:340px;
+            min-height:250px;
+            border-radius:130px;
+            background:radial-gradient(ellipse at center, #1f7a45 0%, #0c3a1f 75%, #092c17 100%);
+            border:10px solid #9c7a37;
+            box-shadow:inset 0 0 30px rgba(0,0,0,0.65), 0 4px 12px rgba(0,0,0,0.6);
         }
 
         .score-row{
@@ -525,7 +535,13 @@ const PIP_PATTERNS = {
     10: ["LR", "LR", "C", "C", "LR", "LR"],
 };
 
-const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
+// آیکون‌های خودمون برای سرباز/بی‌بی/شاه (کد وکتوری، نه ایموجی — چون ایموجی‌های
+// 🤵👸🤴 توی فونت وب‌ویوی تلگرام بعضی گوشی‌ها درست نمایش داده نمیشن)
+const FACE_ICONS = {
+    K: '<svg class="face-icon" viewBox="0 0 40 52"><path d="M7 18 L7 9 L14 15 L20 5 L26 15 L33 9 L33 18 Z" fill="currentColor"/><circle cx="7" cy="7" r="2.4" fill="currentColor"/><circle cx="20" cy="3" r="2.4" fill="currentColor"/><circle cx="33" cy="7" r="2.4" fill="currentColor"/><circle cx="20" cy="28" r="8.5" fill="currentColor"/><path d="M5 49 Q20 30 35 49 L35 51 L5 51 Z" fill="currentColor"/></svg>',
+    Q: '<svg class="face-icon" viewBox="0 0 40 52"><path d="M9 18 Q9 9 13 13.5 Q16 6 20 13 Q24 6 27 13.5 Q31 9 31 18 Z" fill="currentColor"/><circle cx="20" cy="10" r="2" fill="currentColor"/><circle cx="20" cy="28" r="8.5" fill="currentColor"/><path d="M5 49 Q20 30 35 49 L35 51 L5 51 Z" fill="currentColor"/></svg>',
+    J: '<svg class="face-icon" viewBox="0 0 40 52"><path d="M8 18 Q20 4 32 18 Z" fill="currentColor"/><path d="M30 11 L38 6 L34 15 Z" fill="currentColor"/><circle cx="20" cy="28" r="8.5" fill="currentColor"/><path d="M5 49 Q20 30 35 49 L35 51 L5 51 Z" fill="currentColor"/></svg>',
+};
 
 function cardInner(card) {
     const symbol = SUIT_SYMBOLS[card.suit];
@@ -536,8 +552,8 @@ function cardInner(card) {
         return cornerTop + cornerBottom + `<div class="center-symbol">${symbol}</div>`;
     }
 
-    if (faceEmojis[card.rank]) {
-        return cornerTop + cornerBottom + `<div class="center-symbol">${faceEmojis[card.rank]}</div>`;
+    if (FACE_ICONS[card.rank]) {
+        return cornerTop + cornerBottom + FACE_ICONS[card.rank];
     }
 
     const rows = PIP_PATTERNS[card.rank_value] || [];
@@ -632,10 +648,13 @@ function renderGame(state) {
 
     const trickArea = document.getElementById("trick-area");
     trickArea.innerHTML = "";
-    trickCards.forEach((tc) => {
+    trickCards.forEach((tc, i) => {
         const div = document.createElement("div");
         div.className = "card landing" + (RED_SUITS.includes(tc.card.suit) ? " red" : "");
         div.innerHTML = cardInner(tc.card);
+        div.style.transform = (i === 0) ? "rotate(-7deg)" : "rotate(7deg)";
+        div.style.marginLeft = (i === 0) ? "10px" : "-22px";
+        div.style.zIndex = i;
         trickArea.appendChild(div);
     });
     lastTrickCardCount = trickCards.length;
