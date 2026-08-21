@@ -3,17 +3,21 @@ Main game engine for Chahar Barg (Four Leaves / Yazdah) - 2 player mode.
 Fully independent from other games (per project rule).
 
 قوانین کلی مسابقه:
-- هر دور تا تمام‌شدن کارت‌ها (کل دسته ۵۲تایی) ادامه دارد.
+- هر دور تا تمام‌شدن کارت‌های دسته ادامه دارد.
 - شروع‌کننده‌ی دور اول تصادفی است.
 - از دور دوم به بعد، شروع‌کننده برعکس دور قبل می‌شود.
 - ۸ برگ آخر هر دور سور ندارد.
-- اگر امتیاز کل یک بازیکن قبل از این دور به ۵۰ رسیده باشد،
-  سور این دور برای او حساب نمی‌شود.
+- اگر امتیاز کل بازیکن قبل از شروع دور به ۵۰ رسیده باشد،
+  سور آن دور برای او حساب نمی‌شود.
 - بازی تا وقتی ادامه دارد که یکی از بازیکنان به ۶۲ امتیاز برسد.
+- هفت‌خاج:
+  هر بازیکنی که در پایان دور تعداد بیشتری از ۱۳ کارت
+  گشنیز را جمع کرده باشد، ۷ امتیاز می‌گیرد.
 """
 
 import random
 
+from games.chahar_barg.card import Card
 from games.chahar_barg.deck import Deck
 from games.chahar_barg.state import ChaharBargState
 from games.chahar_barg.rules import (
@@ -60,17 +64,8 @@ class ChaharBargGame:
         self.last_round_summary: dict | None = None
 
         # -----------------------------------------------------
-        # وقتی چند ترکیب برای 11 وجود داشته باشد،
-        # حرکت اینجا ذخیره می‌شود تا بازیکن انتخاب کند.
-        #
-        # ساختار:
-        #
-        # {
-        #     "user_id": int,
-        #     "card_index": int,
-        #     "card": Card,
-        #     "options": [...]
-        # }
+        # وقتی چند ترکیب مختلف برای جمع 11 وجود داشته باشد،
+        # حرکت تا انتخاب بازیکن در اینجا نگه داشته می‌شود.
         # -----------------------------------------------------
 
         self.pending_capture: dict | None = None
@@ -99,7 +94,10 @@ class ChaharBargGame:
     # شروع یک دور
     # =========================================================
 
-    def _start_round(self, starter_user_id: int):
+    def _start_round(
+        self,
+        starter_user_id: int,
+    ):
 
         self.round_number += 1
 
@@ -108,23 +106,40 @@ class ChaharBargGame:
         self.deck = Deck()
         self.deck.shuffle()
 
+        # -----------------------------------------------------
+        # پاک کردن دست و کارت‌های جمع‌شده دور قبلی
+        # -----------------------------------------------------
+
         self.player_a.hand = []
         self.player_a.captured = []
 
         self.player_b.hand = []
         self.player_b.captured = []
 
+        # -----------------------------------------------------
+        # ساخت وضعیت جدید دور
+        # -----------------------------------------------------
+
         self.state = ChaharBargState()
 
         self.pending_capture = None
 
+        # -----------------------------------------------------
         # چهار کارت اولیه روی زمین
+        # -----------------------------------------------------
+
         self.state.table_cards = self.deck.draw(4)
 
+        # -----------------------------------------------------
         # چهار کارت برای هر بازیکن
+        # -----------------------------------------------------
+
         self._deal_hands()
 
-        # شروع نوبت
+        # -----------------------------------------------------
+        # تعیین شروع‌کننده
+        # -----------------------------------------------------
+
         self.state.current_turn = starter_user_id
 
     # =========================================================
@@ -132,6 +147,9 @@ class ChaharBargGame:
     # =========================================================
 
     def _deal_hands(self):
+
+        if self.deck is None:
+            return
 
         self.player_a.add_to_hand(
             self.deck.draw(4)
@@ -141,10 +159,15 @@ class ChaharBargGame:
             self.deck.draw(4)
         )
 
-        # اگر بعد از پخش این دست کارت دیگری
-        # در دسته باقی نمانده باشد، این آخرین پخش است.
+        # -----------------------------------------------------
+        # اگر بعد از پخش این دست کارت دیگری در دسته نمانده
+        # باشد، این آخرین دست ۸ کارتی است.
+        # -----------------------------------------------------
+
         if self.deck.is_empty():
-            self.state.is_final_deal = True
+
+            if self.state is not None:
+                self.state.is_final_deal = True
 
     # =========================================================
     # پیدا کردن بازیکن
@@ -178,7 +201,7 @@ class ChaharBargGame:
         return self.player_a
 
     # =========================================================
-    # بازی کردن یک کارت
+    # بازی کردن کارت
     # =========================================================
 
     def play_card(
@@ -188,14 +211,14 @@ class ChaharBargGame:
     ) -> bool:
 
         # -----------------------------------------------------
-        # بازی تمام شده
+        # اگر کل مسابقه تمام شده باشد
         # -----------------------------------------------------
 
         if self.match_finished:
             return False
 
         # -----------------------------------------------------
-        # اگر بازیکن هنوز در حال انتخاب ترکیب 11 است،
+        # اگر بازیکن هنوز در حال انتخاب ترکیب 11 باشد
         # اجازه بازی کارت جدید ندارد.
         # -----------------------------------------------------
 
@@ -203,11 +226,15 @@ class ChaharBargGame:
             return False
 
         # -----------------------------------------------------
-        # بررسی نوبت
+        # وضعیت بازی باید موجود باشد.
         # -----------------------------------------------------
 
         if self.state is None:
             return False
+
+        # -----------------------------------------------------
+        # بررسی نوبت
+        # -----------------------------------------------------
 
         if self.state.current_turn != user_id:
             return False
@@ -232,10 +259,10 @@ class ChaharBargGame:
             return False
 
         # -----------------------------------------------------
-        # کارت را فعلاً از دست بازیکن حذف نمی‌کنیم.
+        # کارت را فعلاً از دست حذف نمی‌کنیم.
         #
-        # اگر چند حالت 11 وجود داشته باشد،
-        # بازیکن باید ابتدا انتخاب کند.
+        # اگر چند ترکیب برای 11 وجود داشته باشد،
+        # ابتدا بازیکن باید انتخاب کند.
         # -----------------------------------------------------
 
         card = player.hand[card_index]
@@ -246,24 +273,31 @@ class ChaharBargGame:
         )
 
         # =====================================================
-        # چند حالت مختلف برای 11
+        # چند ترکیب برای 11
         # =====================================================
 
-        if result.get("requires_selection", False):
+        if result.get(
+            "requires_selection",
+            False,
+        ):
 
             self.pending_capture = {
                 "user_id": user_id,
                 "card_index": card_index,
                 "card": card,
-                "options": result["capture_options"],
+                "options": result[
+                    "capture_options"
+                ],
             }
 
+            # -------------------------------------------------
             # زمین و دست بازیکن هنوز تغییر نکرده‌اند.
+            # -------------------------------------------------
 
             return True
 
         # =====================================================
-        # حالت عادی
+        # حرکت عادی
         # =====================================================
 
         self._apply_move(
@@ -285,25 +319,29 @@ class ChaharBargGame:
     ) -> bool:
 
         # -----------------------------------------------------
-        # باید حرکتی در انتظار انتخاب باشد.
+        # باید حرکت در انتظار انتخاب وجود داشته باشد.
         # -----------------------------------------------------
 
         if self.pending_capture is None:
             return False
 
         # -----------------------------------------------------
-        # فقط همان بازیکنی که کارت را بازی کرده
-        # اجازه انتخاب دارد.
+        # فقط همان بازیکن اجازه انتخاب دارد.
         # -----------------------------------------------------
 
-        if self.pending_capture["user_id"] != user_id:
+        if (
+            self.pending_capture["user_id"]
+            != user_id
+        ):
             return False
 
         # -----------------------------------------------------
-        # اعتبار option_id
+        # بررسی option_id
         # -----------------------------------------------------
 
-        options = self.pending_capture["options"]
+        options = self.pending_capture[
+            "options"
+        ]
 
         if (
             option_id < 0
@@ -311,14 +349,20 @@ class ChaharBargGame:
         ):
             return False
 
+        # -----------------------------------------------------
+        # وضعیت بازی
+        # -----------------------------------------------------
+
         if self.state is None:
             return False
 
         # -----------------------------------------------------
-        # اطلاعات حرکت در انتظار
+        # کارت بازی‌شده
         # -----------------------------------------------------
 
-        played_card = self.pending_capture["card"]
+        played_card = self.pending_capture[
+            "card"
+        ]
 
         # -----------------------------------------------------
         # اعمال انتخاب
@@ -334,13 +378,13 @@ class ChaharBargGame:
             return False
 
         # -----------------------------------------------------
-        # ابتدا حرکت در انتظار را پاک می‌کنیم.
+        # حرکت دیگر در انتظار نیست.
         # -----------------------------------------------------
 
         self.pending_capture = None
 
         # -----------------------------------------------------
-        # سپس حرکت را اعمال می‌کنیم.
+        # اعمال حرکت انتخاب‌شده
         # -----------------------------------------------------
 
         self._apply_move(
@@ -358,7 +402,7 @@ class ChaharBargGame:
     def _apply_move(
         self,
         user_id: int,
-        card,
+        card: Card,
         result: dict,
     ):
 
@@ -371,7 +415,7 @@ class ChaharBargGame:
             return
 
         # -----------------------------------------------------
-        # کارت بازی‌شده را از دست بازیکن حذف می‌کنیم.
+        # کارت بازی‌شده را از دست حذف می‌کنیم.
         # -----------------------------------------------------
 
         player.remove_from_hand(card)
@@ -432,7 +476,10 @@ class ChaharBargGame:
             # هنوز کارت در دسته وجود دارد
             # -------------------------------------------------
 
-            if not self.deck.is_empty():
+            if (
+                self.deck is not None
+                and not self.deck.is_empty()
+            ):
 
                 self._deal_hands()
 
@@ -455,7 +502,9 @@ class ChaharBargGame:
         ):
 
             self.state.current_turn = (
-                self._other_player(user_id).user_id
+                self._other_player(
+                    user_id
+                ).user_id
             )
 
     # =========================================================
@@ -468,8 +517,8 @@ class ChaharBargGame:
             return
 
         # -----------------------------------------------------
-        # کارت‌های باقی‌مانده روی زمین به آخرین جمع‌کننده
-        # تعلق می‌گیرد.
+        # کارت‌های باقی‌مانده روی زمین به آخرین بازیکنی
+        # که کارت جمع کرده تعلق می‌گیرد.
         # -----------------------------------------------------
 
         if (
@@ -490,7 +539,7 @@ class ChaharBargGame:
             self.state.table_cards = []
 
         # -----------------------------------------------------
-        # امتیاز کارت‌ها
+        # امتیاز عادی کارت‌ها
         # -----------------------------------------------------
 
         round_points = {
@@ -505,13 +554,16 @@ class ChaharBargGame:
                 ),
         }
 
-                # -----------------------------------------------------
-        # هفت خاج
+        # =====================================================
+        # هفت‌خاج
         #
-        # هر بازیکنی که بیشترین تعداد کارت گشنیز
-        # را در پایان دور جمع کرده باشد،
-        # ۷ امتیاز هفت خاج می‌گیرد.
-        # -----------------------------------------------------
+        # در کل دسته ۱۳ کارت گشنیز وجود دارد.
+        #
+        # هر بازیکنی که تعداد بیشتری گشنیز جمع کرده باشد
+        # ۷ امتیاز می‌گیرد.
+        #
+        # خود ۷ گشنیز امتیاز جداگانه ندارد.
+        # =====================================================
 
         player_a_clubs = count_clubs(
             self.player_a.captured
@@ -532,6 +584,7 @@ class ChaharBargGame:
             round_points[
                 self.player_b.user_id
             ] += HAFT_KHAJ_POINTS
+
         # -----------------------------------------------------
         # امتیاز سور
         # -----------------------------------------------------
@@ -554,15 +607,21 @@ class ChaharBargGame:
                 < SOUR_DISABLE_THRESHOLD
             ):
 
-                round_points[user_id] += sour_earned
+                round_points[user_id] += (
+                    sour_earned
+                )
 
         # -----------------------------------------------------
         # اضافه کردن امتیاز دور به امتیاز کل
         # -----------------------------------------------------
 
-        for user_id, points in round_points.items():
+        for user_id, points in (
+            round_points.items()
+        ):
 
-            self.total_score[user_id] += points
+            self.total_score[user_id] += (
+                points
+            )
 
         self.player_a.score = (
             self.total_score[
@@ -582,10 +641,22 @@ class ChaharBargGame:
 
         self.last_round_summary = {
             "round_number": self.round_number,
-            "round_points": dict(round_points),
+
+            "round_points": dict(
+                round_points
+            ),
+
             "total_score": dict(
                 self.total_score
             ),
+
+            "clubs": {
+                self.player_a.user_id:
+                    player_a_clubs,
+
+                self.player_b.user_id:
+                    player_b_clubs,
+            },
         }
 
         # -----------------------------------------------------
@@ -594,9 +665,9 @@ class ChaharBargGame:
 
         self.state.round_over = True
 
-        # -----------------------------------------------------
+        # =====================================================
         # بررسی پایان کل مسابقه
-        # -----------------------------------------------------
+        # =====================================================
 
         if (
             max(self.total_score.values())
@@ -610,7 +681,10 @@ class ChaharBargGame:
                 key=self.total_score.get,
             )
 
-            # اگر مساوی شد، برنده نداریم.
+            # -------------------------------------------------
+            # اگر امتیاز مساوی شد، برنده نداریم.
+            # -------------------------------------------------
+
             if (
                 self.total_score[
                     self.player_a.user_id
@@ -623,9 +697,9 @@ class ChaharBargGame:
 
                 self.match_winner = None
 
-        # -----------------------------------------------------
+        # =====================================================
         # شروع دور بعد
-        # -----------------------------------------------------
+        # =====================================================
 
         else:
 
@@ -640,7 +714,7 @@ class ChaharBargGame:
             )
 
     # =========================================================
-    # آیا بازیکن در حال انتخاب ترکیب 11 است؟
+    # آیا انتخاب ترکیب 11 در انتظار است؟
     # =========================================================
 
     def has_pending_capture(
@@ -660,7 +734,7 @@ class ChaharBargGame:
         )
 
     # =========================================================
-    # دریافت گزینه‌های انتخاب
+    # دریافت گزینه‌های انتخاب 11
     # =========================================================
 
     def get_capture_options(
@@ -679,27 +753,47 @@ class ChaharBargGame:
 
         options = []
 
-        for option in self.pending_capture["options"]:
+        for option in (
+            self.pending_capture["options"]
+        ):
 
             options.append(
                 {
-                    "option_id": option["option_id"],
+                    "option_id": option[
+                        "option_id"
+                    ],
+
                     "played_card": (
-                        option["played_card"].to_dict()
+                        option[
+                            "played_card"
+                        ].to_dict()
                     ),
+
                     "table_cards": [
                         card.to_dict()
-                        for card in option["table_cards"]
+                        for card in option[
+                            "table_cards"
+                        ]
                     ],
+
                     "captured": [
                         card.to_dict()
-                        for card in option["captured"]
+                        for card in option[
+                            "captured"
+                        ]
                     ],
+
                     "remaining_table": [
                         card.to_dict()
-                        for card in option["remaining_table"]
+                        for card in option[
+                            "remaining_table"
+                        ]
                     ],
-                    "is_sour": option["is_sour"],
+
+                    "is_sour": option[
+                        "is_sour"
+                    ],
+
                     "is_jack_sweep": option[
                         "is_jack_sweep"
                     ],
@@ -719,59 +813,60 @@ class ChaharBargGame:
         if self.pending_capture is not None:
 
             pending_capture = {
-                "user_id": self.pending_capture[
-                    "user_id"
-                ],
-
-                "card_index": self.pending_capture[
-                    "card_index"
-                ],
-
-                "card": self.pending_capture[
-                    "card"
-                ].to_dict(),
-
-                "options": self.get_capture_options(
+                "user_id":
                     self.pending_capture[
                         "user_id"
-                    ]
-                ),
+                    ],
+
+                "card_index":
+                    self.pending_capture[
+                        "card_index"
+                    ],
+
+                "card":
+                    self.pending_capture[
+                        "card"
+                    ].to_dict(),
+
+                "options":
+                    self.get_capture_options(
+                        self.pending_capture[
+                            "user_id"
+                        ]
+                    ),
             }
 
         return {
             "state": self.state.to_dict(),
 
-            "player_a": self.player_a.to_dict(),
+            "player_a":
+                self.player_a.to_dict(),
 
-            "player_b": self.player_b.to_dict(),
+            "player_b":
+                self.player_b.to_dict(),
 
-            "deck_remaining": (
-                self.deck.remaining()
-            ),
+            "deck_remaining":
+                self.deck.remaining(),
 
-            "round_number": self.round_number,
+            "round_number":
+                self.round_number,
 
-            "total_score": dict(
-                self.total_score
-            ),
+            "total_score":
+                dict(
+                    self.total_score
+                ),
 
-            "match_finished": (
-                self.match_finished
-            ),
+            "match_finished":
+                self.match_finished,
 
-            "match_winner": (
-                self.match_winner
-            ),
+            "match_winner":
+                self.match_winner,
 
-            "last_round_summary": (
-                self.last_round_summary
-            ),
+            "last_round_summary":
+                self.last_round_summary,
 
-            # -------------------------------------------------
-            # اطلاعات انتخاب ترکیب 11
-            # -------------------------------------------------
-
-            "pending_capture": pending_capture,
+            "pending_capture":
+                pending_capture,
         }
 
     # =========================================================
