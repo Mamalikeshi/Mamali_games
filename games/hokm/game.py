@@ -313,3 +313,22 @@ class HokmGame:
                     break
 
         self.play_card(player.user_id, valid_index)
+
+    def forfeit(self, user_id: int):
+        if self.state.winner is not None:
+            return False
+
+        opponent = next(
+            (
+                p for p in self.room.players
+                if p.user_id != user_id
+            ),
+            None,
+        )
+
+        if opponent is None:
+            return False
+
+        self.state.set_winner(opponent.user_id)
+
+        return True
