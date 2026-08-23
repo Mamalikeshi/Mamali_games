@@ -7,6 +7,7 @@ from api.hokm import (
     choose_trump,
     play_card,
     get_game_state,
+    forfeit_game,
 )
 from api.profile import register_or_get_user, get_profile
 from api.matchmaking import find_match, cancel_matchmaking, waiting_queue, matched_rooms
@@ -55,6 +56,11 @@ class PlayCardRequest(BaseModel):
     room_id: str
     user_id: int
     card_index: int
+
+
+class ForfeitRequest(BaseModel):
+    room_id: str
+    user_id: int
 
 
 @router.get("/api/status")
@@ -246,6 +252,24 @@ async def get_game_api(room_id: str, user_id: int = None):
     return {
         "success": True,
         "state": state,
+    }
+
+
+@router.post("/api/game/forfeit")
+async def forfeit_game_api(request: ForfeitRequest):
+    success = forfeit_game(
+        request.room_id,
+        request.user_id,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Cannot forfeit",
+        }
+
+    return {
+        "success": True,
     }
 
 
