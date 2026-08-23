@@ -79,3 +79,18 @@ def get_game_state(room_id: str, user_id: int = None):
             state["my_is_hokm"] = player.is_hokm
 
     return state
+
+
+def forfeit_game(room_id: str, user_id: int):
+    game = games.get(room_id)
+
+    if game is None:
+        return False
+
+    success = game.forfeit(user_id)
+
+    if success:
+        for player in game.room.players:
+            clear_active_room(player.user_id)
+
+    return success
