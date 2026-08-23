@@ -1,5 +1,5 @@
 from games.hokm.game import HokmGame
-from api.room import rooms, get_room
+from api.room import rooms, get_room, clear_active_room
 
 
 games = {}
@@ -64,6 +64,10 @@ def get_game_state(room_id: str, user_id: int = None):
     game.check_timeouts()
 
     state = game.get_state()
+
+    if state.get("winner") is not None:
+        for player in game.room.players:
+            clear_active_room(player.user_id)
 
     if user_id is not None:
         player = game.get_player(user_id)
