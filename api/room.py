@@ -45,6 +45,10 @@ def get_active_room_id(user_id: int):
     return active_room_by_user.get(user_id)
 
 
+def clear_active_room(user_id: int):
+    active_room_by_user.pop(user_id, None)
+
+
 def mark_ready(room_id: str, user_id: int):
     room = rooms.get(room_id)
 
