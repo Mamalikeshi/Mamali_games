@@ -305,8 +305,6 @@ const SUIT_SYMBOLS = {
     spades: "♠️",
 };
 
-// نسخه‌ی متنیِ ساده (بدون رنگی/ایموجی) برای گوشه‌ها و نمادهای وسط برگ —
-// چون حالت ایموجیِ رنگی توی اندازه‌ی کوچیک نامنظم و به‌هم‌ریخته دیده میشد
 const SUIT_TEXT = {
     hearts: "♥",
     diamonds: "♦",
@@ -341,7 +339,6 @@ document.getElementById("username").value = getDefaultUsername();
 let roomId = null;
 let pollTimer = null;
 
-// --- صدا ---
 let soundMuted = localStorage.getItem("mamali_sound_muted") === "1";
 document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
 
@@ -417,7 +414,6 @@ let lastCardsPlayedCount = null;
 let lastHandNumber = null;
 let lastTrickCardCount = 0;
 
-// --- تایمر نوبت ---
 let turnTimerInterval = null;
 let lastTurnStartedAt = null;
 let lastServerTime = null;
@@ -542,7 +538,6 @@ const PIP_PATTERNS = {
     10: ["LR", "LR", "C", "C", "LR", "LR"],
 };
 
-// شاه/بی‌بی/سرباز: ایموجی واقعی (رنگی)، بزرگ‌تر از قبل
 const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
 
 function cardInner(card) {
@@ -721,9 +716,6 @@ async function playCard(index) {
     }
 }
 
-// اگه کاربر وسط یه بازیِ شروع‌شده بوده و صفحه رو دوباره باز کرده، خودکار برش می‌گردونیم.
-// اگه بازی هنوز شروع نشده بود (مثلاً حریف قبلی هیچ‌وقت آماده نشد و رفت)، برنمی‌گردونیمش
-// به صفحه‌ی انتظار قدیمی؛ می‌ذاریم خودش دوباره «پیدا کردن حریف» رو بزنه.
 (async function checkForActiveRoom() {
     const res = await api("/api/room/my-active/" + userId, "GET");
 
@@ -731,6 +723,11 @@ async function playCard(index) {
 
     const room = res.room;
     if (!room || !room.is_started) return;
+
+    const gameCheck = await api("/api/game/" + res.room_id + "?user_id=" + userId, "GET");
+    if (gameCheck.success && gameCheck.state && gameCheck.state.winner !== null && gameCheck.state.winner !== undefined) {
+        return;
+    }
 
     roomId = res.room_id;
     showScreen("game");
