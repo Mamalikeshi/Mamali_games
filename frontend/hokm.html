@@ -247,6 +247,56 @@
             font-size:13px;
             color:#f2a13c;
         }
+
+        .exit-link{
+            margin-top:14px;
+            font-size:13px;
+            color:#e05a5a;
+            cursor:pointer;
+            text-decoration:underline;
+        }
+
+        .modal-overlay{
+            display:none;
+            position:fixed;
+            top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.75);
+            align-items:center;
+            justify-content:center;
+            z-index:100;
+        }
+
+        .modal-box{
+            background:#1e1e1e;
+            border-radius:14px;
+            padding:22px;
+            width:80%;
+            max-width:300px;
+            text-align:center;
+        }
+
+        .modal-box p{
+            font-size:15px;
+            line-height:1.7;
+            margin:0 0 18px;
+        }
+
+        .modal-buttons{
+            display:flex;
+            gap:10px;
+        }
+
+        .modal-buttons .button{
+            width:auto;
+            flex:1;
+            margin:0;
+            padding:12px;
+            font-size:15px;
+        }
+
+        .modal-buttons .button.no{
+            background:#444;
+        }
     </style>
 </head>
 
@@ -261,7 +311,9 @@
 <div id="screen-lobby">
     <input id="username" placeholder="اسمت رو بنویس" maxlength="20">
 
-    <div class="button" onclick="findRandomMatch()">🎲 پیدا کردن حریف</div>
+    <div class="button" id="continue-active-button" style="display:none;" onclick="continueActiveGame()">▶️ ادامه بازی فعال</div>
+
+    <div class="button" onclick="handleNewGameClick()">🎲 بازی جدید</div>
 
     <div class="status" id="matchmaking-status"></div>
 </div>
@@ -287,10 +339,22 @@
     <div class="trick-area" id="trick-area"></div>
 
     <div class="hand" id="hand"></div>
+
+    <div class="exit-link" onclick="handleExitClick()">🚪 خروج کامل از بازی</div>
 </div>
 
 <div id="screen-finished" style="display:none;">
     <div class="status" id="finished-status" style="font-size:20px;"></div>
+</div>
+
+<div class="modal-overlay" id="confirm-modal">
+    <div class="modal-box">
+        <p id="confirm-modal-text"></p>
+        <div class="modal-buttons">
+            <div class="button" onclick="confirmModalYes()">بله</div>
+            <div class="button no" onclick="confirmModalNo()">خیر</div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -455,6 +519,65 @@ async function api(path, method, body) {
 
 let matchmakingTimer = null;
 let iAmReady = false;
+let activeRoomId = null;
+
+let confirmModalCallback = null;
+
+function showConfirmModal(text, onYes) {
+    document.getElementById("confirm-modal-text").innerText = text;
+    confirmModalCallback = onYes;
+    document.getElementById("confirm-modal").style.display = "flex";
+}
+
+function confirmModalYes() {
+    document.getElementById("confirm-modal").style.display = "none";
+    const cb = confirmModalCallback;
+    confirmModalCallback = null;
+    if (cb) cb();
+}
+
+function confirmModalNo() {
+    document.getElementById("confirm-modal").style.display = "none";
+    confirmModalCallback = null;
+}
+
+function handleNewGameClick() {
+    if (activeRoomId) {
+        showConfirmModal(
+            "شما بازی فعال دارید. اگر قصد اجرای بازی جدید دارید، بازی فعال شما بازنده اعلام می‌شود.\nآیا مطمئنید؟",
+            async () => {
+                await api("/api/game/forfeit", "POST", {
+                    room_id: activeRoomId,
+                    user_id: userId,
+                });
+                activeRoomId = null;
+                document.getElementById("continue-active-button").style.display = "none";
+                findRandomMatch();
+            }
+        );
+    } else {
+        findRandomMatch();
+    }
+}
+
+function continueActiveGame() {
+    roomId = activeRoomId;
+    showScreen("game");
+    startGamePoll();
+}
+
+function handleExitClick() {
+    showConfirmModal(
+        "اگر از بازی به طور کامل خارج شوید، بازنده بازی خواهید بود.\nآیا مطمئنید؟",
+        async () => {
+            await api("/api/game/forfeit", "POST", {
+                room_id: roomId,
+                user_id: userId,
+            });
+            window.location.href = "index.html";
+        }
+    );
+}
 
 async function findRandomMatch() {
     const username = document.getElementById("username").value.trim() || "بازیکن";
@@ -716,6 +839,8 @@ async function playCard(index) {
     }
 }
 
+// اگه کاربر وسط یه بازیِ شروع‌شده بوده، به‌جای پرش خودکار، دکمه‌ی
+// «ادامه بازی فعال» رو نشون می‌دیم تا خودش انتخاب کنه.
 (async function checkForActiveRoom() {
     const res = await api("/api/room/my-active/" + userId, "GET");
 
@@ -729,9 +854,8 @@ async function playCard(index) {
         return;
     }
 
-    roomId = res.room_id;
-    showScreen("game");
-    startGamePoll();
+    activeRoomId = res.room_id;
+    document.getElementById("continue-active-button").style.display = "block";
 })();
 
 </script>
