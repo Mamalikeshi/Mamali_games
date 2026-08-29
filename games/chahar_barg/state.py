@@ -6,6 +6,8 @@ Fully independent from other games (per project rule).
 اطلاعات کل مسابقه (امتیاز تجمعی، شماره دور و غیره) تو game.py نگه داشته می‌شه.
 """
 
+import time
+
 from games.chahar_barg.card import Card
 
 
@@ -25,6 +27,20 @@ class ChaharBargState:
 
         self.round_over: bool = False
 
+        # برای تایمر نوبت (۲۰ ثانیه) و تشخیص قطع ارتباط (۶۰ ثانیه)
+        self.turn_started_at: float | None = None
+        self.last_seen: dict[int, float] = {}
+
+        # برای این‌که فرانت‌اند بتونه هر برگ جدید رو تشخیص بده و صدا پخش کنه
+        self.cards_played_count: int = 0
+
+    def set_turn(self, user_id: int):
+        self.current_turn = user_id
+        self.turn_started_at = time.time()
+
+    def touch(self, user_id: int):
+        self.last_seen[user_id] = time.time()
+
     def to_dict(self) -> dict:
         return {
             "table_cards": [card.to_dict() for card in self.table_cards],
@@ -33,4 +49,7 @@ class ChaharBargState:
             "last_capturer": self.last_capturer,
             "is_final_deal": self.is_final_deal,
             "round_over": self.round_over,
+            "turn_started_at": self.turn_started_at,
+            "server_time": time.time(),
+            "cards_played_count": self.cards_played_count,
         }
