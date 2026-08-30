@@ -1,318 +1,887 @@
 <!DOCTYPE html>
 <html lang="fa">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>چهاربرگ</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<style>
-  body{
-    margin:0;
-    background:#151515;
-    color:white;
-    font-family:tahoma;
-    text-align:center;
-    padding-bottom:30px;
-  }
-  h1{ margin-top:20px; font-size:22px; }
-  .box{
-    max-width:400px;
-    margin:15px auto;
-    padding:15px;
-  }
-  .button{
-    width:250px;
-    margin:10px auto;
-    padding:14px;
-    background:#2f80ed;
-    border-radius:12px;
-    cursor:pointer;
-    font-size:18px;
-    border:none;
-    color:white;
-  }
-  .button:disabled{
-    background:#444;
-  }
-  .back{
-    background:#333;
-    width:150px;
-    font-size:15px;
-    padding:10px;
-  }
-  input{
-    width:220px;
-    padding:12px;
-    border-radius:10px;
-    border:none;
-    font-size:16px;
-    text-align:center;
-    margin:8px auto;
-  }
-  .status{
-    color:#9be08b;
-    margin:10px;
-    font-size:14px;
-  }
-  .table{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:6px;
-    margin:15px auto;
-    min-height:70px;
-  }
-  .hand{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:6px;
-    margin:15px auto;
-  }
-  .card{
-    width:46px;
-    height:64px;
-    background:white;
-    color:#151515;
-    border-radius:6px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:bold;
-    font-size:14px;
-  }
-  .card.playable{
-    border:3px solid #2f80ed;
-    cursor:pointer;
-  }
-  .scoreboard{
-    margin:10px;
-    font-size:16px;
-  }
-  .hidden{ display:none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>چهاربرگ</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body{
+            margin:0;
+            background:#151515;
+            color:white;
+            font-family:tahoma;
+            text-align:center;
+            padding-bottom:12px;
+        }
+
+        h1{
+            margin-top:14px;
+            font-size:18px;
+        }
+
+        input{
+            width:220px;
+            padding:12px;
+            margin:8px auto;
+            display:block;
+            border-radius:10px;
+            border:none;
+            font-size:16px;
+            text-align:center;
+        }
+
+        .button{
+            width:250px;
+            margin:15px auto;
+            padding:15px;
+            background:#2f80ed;
+            border-radius:12px;
+            cursor:pointer;
+            font-size:18px;
+        }
+
+        .status{
+            margin:8px auto;
+            font-size:14px;
+            color:#aaa;
+            max-width:320px;
+        }
+
+        .hand{
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            gap:5px;
+            margin:10px 6px;
+        }
+
+        .card{
+            background:linear-gradient(160deg, #ffffff, #f2f2f2);
+            color:#111;
+            border-radius:8px;
+            border:1px solid rgba(0,0,0,0.15);
+            position:relative;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            cursor:pointer;
+            box-shadow:0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .hand .card{
+            width:50px;
+            height:73px;
+        }
+
+        .trick-area .card{
+            width:58px;
+            height:85px;
+        }
+
+        @keyframes cardWiggle{
+            0%, 100% { transform: rotate(0deg) translateY(0); }
+            25% { transform: rotate(-4deg) translateY(-2px); }
+            75% { transform: rotate(4deg) translateY(-2px); }
+        }
+
+        .card.playable{
+            animation: cardWiggle 1.6s ease-in-out infinite;
+        }
+
+        @keyframes cardLand{
+            0% { transform: translateY(70px) scale(0.5); opacity:0; }
+            100% { transform: translateY(0) scale(1); opacity:1; }
+        }
+
+        .card.landing{
+            animation: cardLand 0.3s ease-out;
+        }
+
+        .card .corner{
+            position:absolute;
+            top:3px;
+            left:4px;
+            font-size:10px;
+            font-weight:bold;
+            line-height:1.1;
+            text-align:center;
+        }
+
+        .card .corner.bottom{
+            top:auto;
+            left:auto;
+            bottom:3px;
+            right:4px;
+            transform:rotate(180deg);
+        }
+
+        .card .center-symbol{
+            font-size:20px;
+        }
+
+        .card .face-emoji{
+            font-size:22px;
+        }
+
+        .card .pip-layout{
+            width:100%;
+            height:100%;
+            display:flex;
+            flex-direction:column;
+            justify-content:space-evenly;
+            padding:15px 8px 15px;
+            box-sizing:border-box;
+        }
+
+        .card .pip-row{
+            display:flex;
+            justify-content:space-between;
+        }
+
+        .card .pip-row.center{
+            justify-content:center;
+        }
+
+        .card .pip-row span{
+            font-size:9px;
+            line-height:1;
+        }
+
+        .card.red{ color:#c0142c; }
+
+        .card.disabled{
+            opacity:0.4;
+            cursor:default;
+        }
+
+        .trick-area{
+            position:relative;
+            display:flex;
+            flex-wrap:wrap;
+            justify-content:center;
+            align-items:center;
+            gap:8px;
+            margin:12px auto;
+            width:92%;
+            max-width:380px;
+            min-height:200px;
+            border-radius:28px;
+            background:radial-gradient(ellipse at center, #1f7a45 0%, #0c3a1f 75%, #092c17 100%);
+            border:9px solid #9c7a37;
+            box-shadow:inset 0 0 30px rgba(0,0,0,0.65), 0 4px 12px rgba(0,0,0,0.6);
+            padding:14px 6px;
+        }
+
+        .score-row{
+            display:flex;
+            justify-content:center;
+            gap:26px;
+            margin:8px auto;
+            font-size:14px;
+        }
+
+        .back-link{
+            position:absolute;
+            top:14px;
+            right:16px;
+            font-size:13px;
+            color:#aaa;
+            cursor:pointer;
+        }
+
+        .sound-toggle{
+            position:absolute;
+            top:11px;
+            left:16px;
+            font-size:20px;
+            cursor:pointer;
+        }
+
+        .turn-timer{
+            font-size:13px;
+            color:#f2a13c;
+        }
+
+        .exit-link{
+            margin-top:14px;
+            font-size:13px;
+            color:#e05a5a;
+            cursor:pointer;
+            text-decoration:underline;
+        }
+
+        .modal-overlay{
+            display:none;
+            position:fixed;
+            top:0; left:0; right:0; bottom:0;
+            background:rgba(0,0,0,0.75);
+            align-items:center;
+            justify-content:center;
+            z-index:100;
+        }
+
+        .modal-box{
+            background:#1e1e1e;
+            border-radius:14px;
+            padding:22px;
+            width:82%;
+            max-width:320px;
+            text-align:center;
+            max-height:80vh;
+            overflow-y:auto;
+        }
+
+        .modal-box p{
+            font-size:15px;
+            line-height:1.7;
+            margin:0 0 18px;
+            white-space:pre-line;
+        }
+
+        .modal-buttons{
+            display:flex;
+            gap:10px;
+        }
+
+        .modal-buttons .button{
+            width:auto;
+            flex:1;
+            margin:0;
+            padding:12px;
+            font-size:15px;
+        }
+
+        .modal-buttons .button.no{
+            background:#444;
+        }
+
+        .option-card{
+            background:#2a2a2a;
+            border-radius:10px;
+            padding:10px;
+            margin-bottom:10px;
+            text-align:right;
+            cursor:pointer;
+            font-size:13px;
+            line-height:1.6;
+        }
+
+        .option-card:active{
+            background:#3a3a3a;
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>🀄 چهاربرگ (دونفره)</h1>
+<div class="back-link" onclick="window.location.href='index.html'">⬅️ بازگشت به منو</div>
 
-<div id="screen-menu" class="box">
-  <button class="button" onclick="createRoom()">ساخت اتاق جدید</button>
-  <div>
-    <input id="join-room-id" placeholder="کد اتاق را وارد کن">
-    <br>
-    <button class="button" onclick="joinRoom()">پیوستن به اتاق</button>
-  </div>
-  <div id="menu-status" class="status"></div>
+<div class="sound-toggle" id="sound-toggle" onclick="toggleSound()">🔊</div>
+
+<h1>🀄 چهاربرگ</h1>
+
+<div id="screen-lobby">
+    <input id="username" placeholder="اسمت رو بنویس" maxlength="20">
+
+    <div class="button" id="continue-active-button" style="display:none;" onclick="continueActiveGame()">▶️ ادامه بازی فعال</div>
+
+    <div class="button" onclick="handleNewGameClick()">🎲 بازی جدید</div>
+
+    <div class="status" id="matchmaking-status"></div>
 </div>
 
-<div id="screen-waiting" class="box hidden">
-  <p>کد اتاق: <b id="waiting-room-id"></b></p>
-  <p id="waiting-status">در انتظار بازیکن دوم...</p>
-  <button class="button" id="ready-btn" onclick="setReady()">آماده‌ام</button>
+<div id="screen-waiting" style="display:none;">
+    <div class="status" id="waiting-status">حریف پیدا شد! وقتی آماده‌ای بزن شروع</div>
+    <div class="button" id="start-button" onclick="markReady()">✅ من آماده‌ام</div>
 </div>
 
-<div id="screen-game" class="box hidden">
-  <div class="scoreboard" id="scoreboard"></div>
-  <p id="turn-status"></p>
-  <p>زمین بازی:</p>
-  <div class="table" id="table-cards"></div>
-  <p>دست شما:</p>
-  <div class="hand" id="hand-cards"></div>
+<div id="screen-game" style="display:none;">
+    <div class="status" id="game-status"></div>
+    <div class="turn-timer" id="turn-timer"></div>
+
+    <div class="score-row" id="score-row"></div>
+
+    <div class="trick-area" id="trick-area"></div>
+
+    <div class="hand" id="hand"></div>
+
+    <div class="exit-link" onclick="handleExitClick()">🚪 خروج کامل از بازی</div>
 </div>
 
-<div class="box">
-  <button class="button back" onclick="goBack()">🔙 بازگشت به منو</button>
+<div id="screen-finished" style="display:none;">
+    <div class="status" id="finished-status" style="font-size:20px;"></div>
+</div>
+
+<div class="modal-overlay" id="confirm-modal">
+    <div class="modal-box">
+        <p id="confirm-modal-text"></p>
+        <div class="modal-buttons">
+            <div class="button" onclick="confirmModalYes()">بله</div>
+            <div class="button no" onclick="confirmModalNo()">خیر</div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="info-modal">
+    <div class="modal-box">
+        <p id="info-modal-text"></p>
+        <div class="modal-buttons">
+            <div class="button" onclick="closeInfoModal()">باشه</div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="capture-modal">
+    <div class="modal-box">
+        <p>کدوم ترکیب رو می‌خوای جمع کنی؟</p>
+        <div id="capture-options"></div>
+    </div>
 </div>
 
 <script>
+
 let tg = window.Telegram.WebApp;
 tg.expand();
 
-let user = tg.initDataUnsafe && tg.initDataUnsafe.user
-  ? tg.initDataUnsafe.user
-  : { id: Math.floor(Math.random() * 1000000), username: "guest" };
-
-let userId = user.id;
-let username = user.username || user.first_name || ("player" + userId);
-
-let currentRoomId = null;
-let pollTimer = null;
-
-function goBack(){
-  window.location.href = "index.html";
-}
-
-async function apiPost(path, body){
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  return res.json();
-}
-
-async function apiGet(path){
-  const res = await fetch(path);
-  return res.json();
-}
-
-async function createRoom(){
-  const data = await apiPost("/api/chahar_barg/rooms", {
-    user_id: userId,
-    username: username,
-  });
-  if (data.success){
-    currentRoomId = data.room_id;
-    showWaitingScreen();
-  } else {
-    document.getElementById("menu-status").innerText = "خطا در ساخت اتاق";
-  }
-}
-
-async function joinRoom(){
-  const roomId = document.getElementById("join-room-id").value.trim();
-  if (!roomId){
-    document.getElementById("menu-status").innerText = "کد اتاق را وارد کن";
-    return;
-  }
-  const data = await apiPost("/api/chahar_barg/rooms/" + roomId + "/join", {
-    user_id: userId,
-    username: username,
-  });
-  if (data.success){
-    currentRoomId = roomId;
-    showWaitingScreen();
-  } else {
-    document.getElementById("menu-status").innerText = "اتاق پیدا نشد یا پر است";
-  }
-}
-
-function showWaitingScreen(){
-  document.getElementById("screen-menu").classList.add("hidden");
-  document.getElementById("screen-waiting").classList.remove("hidden");
-  document.getElementById("waiting-room-id").innerText = currentRoomId;
-  startWaitingPoll();
-}
-
-async function setReady(){
-  document.getElementById("ready-btn").disabled = true;
-  await apiPost("/api/chahar_barg/rooms/" + currentRoomId + "/ready/" + userId, {});
-}
-
-function startWaitingPoll(){
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    const data = await apiGet("/api/chahar_barg/rooms/" + currentRoomId);
-    if (data.is_started){
-      clearInterval(pollTimer);
-      showGameScreen();
-      return;
-    }
-    document.getElementById("waiting-status").innerText =
-      "بازیکنان: " + data.players.length + " / 2";
-  }, 2000);
-}
-
-function showGameScreen(){
-  document.getElementById("screen-waiting").classList.add("hidden");
-  document.getElementById("screen-game").classList.remove("hidden");
-  startGamePoll();
-}
-
-function startGamePoll(){
-  if (pollTimer) clearInterval(pollTimer);
-  refreshGame();
-  pollTimer = setInterval(refreshGame, 2000);
-}
-
-const SUIT_ICON = {
-  hearts: "♥️",
-  diamonds: "♦️",
-  clubs: "♣️",
-  spades: "♠️",
+const SUIT_SYMBOLS = {
+    hearts: "♥️",
+    diamonds: "♦️",
+    clubs: "♣️",
+    spades: "♠️",
 };
 
-async function refreshGame(){
-  const gameData = await apiGet("/api/chahar_barg/rooms/" + currentRoomId + "/game");
-  if (!gameData.success) return;
+const SUIT_TEXT = {
+    hearts: "♥",
+    diamonds: "♦",
+    clubs: "♣",
+    spades: "♠",
+};
 
-  const game = gameData.game;
-  const state = game.state;
-  const handData = await apiGet("/api/chahar_barg/rooms/" + currentRoomId + "/hand/" + userId);
+const RED_SUITS = ["hearts", "diamonds"];
 
-  renderScoreboard(game);
-  renderTurn(state, game);
-  renderTable(state.table_cards);
-  renderHand(handData.hand, state.current_turn === userId && !game.match_finished);
-
-  if (game.match_finished){
-    clearInterval(pollTimer);
-    showFinalScore(game);
-  }
-}
-
-function renderScoreboard(game){
-  const scoreA = game.total_score[game.player_a.user_id] || 0;
-  const scoreB = game.total_score[game.player_b.user_id] || 0;
-  document.getElementById("scoreboard").innerText =
-    game.player_a.username + ": " + scoreA + " امتیاز  |  " +
-    game.player_b.username + ": " + scoreB + " امتیاز" +
-    "  (دور " + game.round_number + " از ۶۲)";
-}
-function renderTurn(state, game){
-  if (game.match_finished){
-    document.getElementById("turn-status").innerText = "بازی تمام شد!";
-    return;
-  }
-  document.getElementById("turn-status").innerText =
-    state.current_turn === userId ? "نوبت شماست 🎯" : "منتظر حریف...";
-}
-function renderTable(cards){
-  const el = document.getElementById("table-cards");
-  el.innerHTML = "";
-  cards.forEach(card => {
-    const div = document.createElement("div");
-    div.className = "card";
-    div.innerText = card.rank + SUIT_ICON[card.suit];
-    el.appendChild(div);
-  });
-}
-
-function renderHand(cards, isMyTurn){
-  const el = document.getElementById("hand-cards");
-  el.innerHTML = "";
-  cards.forEach((card, index) => {
-    const div = document.createElement("div");
-    div.className = "card" + (isMyTurn ? " playable" : "");
-    div.innerText = card.rank + SUIT_ICON[card.suit];
-    if (isMyTurn){
-      div.onclick = () => playCard(index);
+function getUserId() {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        return tg.initDataUnsafe.user.id;
     }
-    el.appendChild(div);
-  });
+    let stored = localStorage.getItem("mamali_user_id");
+    if (!stored) {
+        stored = Math.floor(Math.random() * 1000000000);
+        localStorage.setItem("mamali_user_id", stored);
+    }
+    return parseInt(stored);
 }
 
-async function playCard(index){
-  await apiPost("/api/chahar_barg/rooms/" + currentRoomId + "/play", {
-    user_id: userId,
-    card_index: index,
-  });
-  refreshGame();
-}async function showFinalScore(game){
-  const scoreA = game.total_score[game.player_a.user_id] || 0;
-  const scoreB = game.total_score[game.player_b.user_id] || 0;
-  let winnerText = "مساوی شد";
-  if (game.match_winner === game.player_a.user_id){
-    winnerText = "برنده: " + game.player_a.username;
-  } else if (game.match_winner === game.player_b.user_id){
-    winnerText = "برنده: " + game.player_b.username;
-  }
-  document.getElementById("turn-status").innerText =
-    "🏁 بازی تمام شد! " + winnerText +
-    " (امتیاز نهایی: " + scoreA + " - " + scoreB + ")";
+function getDefaultUsername() {
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        return tg.initDataUnsafe.user.first_name || "بازیکن";
+    }
+    return "";
 }
-  
+
+const userId = getUserId();
+document.getElementById("username").value = getDefaultUsername();
+
+let roomId = null;
+let pollTimer = null;
+
+let soundMuted = localStorage.getItem("mamali_sound_muted") === "1";
+document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+
+function toggleSound() {
+    soundMuted = !soundMuted;
+    localStorage.setItem("mamali_sound_muted", soundMuted ? "1" : "0");
+    document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+}
+
+let sharedAudioCtx = null;
+function getAudioCtx() {
+    if (!sharedAudioCtx) {
+        sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return sharedAudioCtx;
+}
+
+function playCardSound() {
+    if (soundMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        const bufferSize = ctx.sampleRate * 0.12;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 2200;
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.35, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        noise.start();
+    } catch (e) {}
+}
+
+function playDealSound() {
+    if (soundMuted) return;
+    try {
+        const ctx = getAudioCtx();
+        for (let i = 0; i < 6; i++) {
+            setTimeout(() => {
+                const bufferSize = ctx.sampleRate * 0.05;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let j = 0; j < bufferSize; j++) {
+                    data[j] = (Math.random() * 2 - 1) * (1 - j / bufferSize);
+                }
+                const noise = ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = ctx.createBiquadFilter();
+                filter.type = "highpass";
+                filter.frequency.value = 1500;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.18, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                noise.start();
+            }, i * 70);
+        }
+    } catch (e) {}
+}
+
+let lastCardsPlayedCount = null;
+let lastRoundNumber = null;
+
+let turnTimerInterval = null;
+let lastTurnStartedAt = null;
+let lastServerTime = null;
+const TURN_SECONDS = 20;
+
+function startTurnTimerTicker() {
+    clearInterval(turnTimerInterval);
+    turnTimerInterval = setInterval(updateTurnTimerDisplay, 1000);
+}
+
+function updateTurnTimerDisplay() {
+    if (!lastTurnStartedAt) {
+        document.getElementById("turn-timer").innerText = "";
+        return;
+    }
+    const localElapsed = (Date.now() / 1000) - lastServerTime;
+    const elapsed = (lastServerTime - lastTurnStartedAt) + localElapsed;
+    const remaining = Math.max(0, Math.ceil(TURN_SECONDS - elapsed));
+    document.getElementById("turn-timer").innerText = "⏱ " + remaining + " ثانیه";
+}
+
+function showScreen(name) {
+    ["lobby", "waiting", "game", "finished"].forEach((s) => {
+        document.getElementById("screen-" + s).style.display =
+            (s === name) ? "block" : "none";
+    });
+}
+
+startTurnTimerTicker();
+
+async function api(path, method, body) {
+    const res = await fetch(path, {
+        method: method || "GET",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    return res.json();
+}
+
+let matchmakingTimer = null;
+let iAmReady = false;
+let activeRoomId = null;
+
+let confirmModalCallback = null;
+
+function showConfirmModal(text, onYes) {
+    document.getElementById("confirm-modal-text").innerText = text;
+    confirmModalCallback = onYes;
+    document.getElementById("confirm-modal").style.display = "flex";
+}
+
+function confirmModalYes() {
+    document.getElementById("confirm-modal").style.display = "none";
+    const cb = confirmModalCallback;
+    confirmModalCallback = null;
+    if (cb) cb();
+}
+
+function confirmModalNo() {
+    document.getElementById("confirm-modal").style.display = "none";
+    confirmModalCallback = null;
+}
+
+function showInfoModal(text) {
+    document.getElementById("info-modal-text").innerText = text;
+    document.getElementById("info-modal").style.display = "flex";
+}
+
+function closeInfoModal() {
+    document.getElementById("info-modal").style.display = "none";
+}
+
+function handleNewGameClick() {
+    if (activeRoomId) {
+        showConfirmModal(
+            "شما بازی فعال دارید. اگر قصد اجرای بازی جدید دارید، بازی فعال شما بازنده اعلام می‌شود.\nآیا مطمئنید؟",
+            async () => {
+                await api("/api/chahar_barg/game/forfeit", "POST", {
+                    room_id: activeRoomId,
+                    user_id: userId,
+                });
+                activeRoomId = null;
+                document.getElementById("continue-active-button").style.display = "none";
+                findRandomMatch();
+            }
+        );
+    } else {
+        findRandomMatch();
+    }
+}
+
+function continueActiveGame() {
+    roomId = activeRoomId;
+    showScreen("game");
+    startGamePoll();
+}
+
+function handleExitClick() {
+    showConfirmModal(
+        "اگر از بازی به طور کامل خارج شوید، بازنده بازی خواهید بود.\nآیا مطمئنید؟",
+        async () => {
+            await api("/api/chahar_barg/game/forfeit", "POST", {
+                room_id: roomId,
+                user_id: userId,
+            });
+            window.location.href = "index.html";
+        }
+    );
+}
+
+async function findRandomMatch() {
+    const username = document.getElementById("username").value.trim() || "بازیکن";
+    document.getElementById("matchmaking-status").innerText = "در حال جستجوی حریف...";
+
+    clearInterval(matchmakingTimer);
+    matchmakingTimer = setInterval(() => pollMatchmaking(username), 2000);
+    pollMatchmaking(username);
+}
+
+async function pollMatchmaking(username) {
+    const res = await api("/api/chahar_barg/matchmaking/find", "POST", {
+        user_id: userId,
+        username: username,
+    });
+
+    if (res.matched) {
+        clearInterval(matchmakingTimer);
+        roomId = res.room_id;
+        showScreen("waiting");
+        startWaitingPoll();
+    }
+}
+
+async function markReady() {
+    iAmReady = true;
+    document.getElementById("start-button").style.display = "none";
+    document.getElementById("waiting-status").innerText = "منتظر آماده شدن حریف...";
+
+    await api("/api/chahar_barg/room/ready", "POST", {
+        room_id: roomId,
+        user_id: userId,
+    });
+}
+
+function startWaitingPoll() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(checkRoom, 2000);
+    checkRoom();
+}
+
+async function checkRoom() {
+    const res = await api("/api/chahar_barg/room/my-active/" + userId, "GET");
+
+    if (res.success && res.room && res.room.is_started) {
+        clearInterval(pollTimer);
+        showScreen("game");
+        startGamePoll();
+        return;
+    }
+
+    if (res.success && res.room && res.room.is_full && iAmReady) {
+        await api("/api/chahar_barg/game/start", "POST", { room_id: roomId });
+    }
+}
+
+function startGamePoll() {
+    clearInterval(pollTimer);
+    pollTimer = setInterval(refreshGame, 2000);
+    refreshGame();
+}
+
+async function refreshGame() {
+    const res = await api("/api/chahar_barg/game/" + roomId + "?user_id=" + userId, "GET");
+    if (!res.success) return;
+    renderGame(res.state);
+}
+
+const PIP_PATTERNS = {
+    1: ["C"],
+    2: ["C", "C"],
+    3: ["C", "C", "C"],
+    4: ["LR", "LR"],
+    5: ["LR", "C", "LR"],
+    6: ["LR", "LR", "LR"],
+    7: ["LR", "C", "LR", "LR"],
+    8: ["LR", "LR", "LR", "LR"],
+    9: ["LR", "LR", "C", "LR", "LR"],
+    10: ["LR", "LR", "C", "C", "LR", "LR"],
+};
+
+const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
+
+function cardInner(card) {
+    const textSymbol = SUIT_TEXT[card.suit];
+    const cornerTop = `<div class="corner">${card.rank}<br>${textSymbol}</div>`;
+    const cornerBottom = `<div class="corner bottom">${card.rank}<br>${textSymbol}</div>`;
+
+    if (card.rank === "A") {
+        return cornerTop + cornerBottom + `<div class="center-symbol">${textSymbol}</div>`;
+    }
+
+    if (faceEmojis[card.rank]) {
+        return cornerTop + cornerBottom + `<div class="face-emoji">${faceEmojis[card.rank]}</div>`;
+    }
+
+    const rows = PIP_PATTERNS[card.value] || [];
+    let rowsHtml = "";
+    rows.forEach((row) => {
+        if (row === "C") {
+            rowsHtml += `<div class="pip-row center"><span>${textSymbol}</span></div>`;
+        } else {
+            rowsHtml += `<div class="pip-row"><span>${textSymbol}</span><span>${textSymbol}</span></div>`;
+        }
+    });
+
+    return cornerTop + cornerBottom + `<div class="pip-layout">${rowsHtml}</div>`;
+}
+
+function cardLabel(card) {
+    return card.rank + SUIT_TEXT[card.suit];
+}
+
+let capturePromptShownFor = null;
+
+function renderGame(state) {
+    const round = state.state;
+
+    lastTurnStartedAt = round.turn_started_at;
+    lastServerTime = round.server_time;
+    updateTurnTimerDisplay();
+
+    const playedCount = round.cards_played_count || 0;
+    if (lastCardsPlayedCount !== null && playedCount > lastCardsPlayedCount) {
+        playCardSound();
+    }
+    lastCardsPlayedCount = playedCount;
+
+    // خلاصه‌ی دور قبل، وقتی دور عوض میشه یه‌بار نشون داده میشه
+    if (
+        state.last_round_summary &&
+        lastRoundNumber !== null &&
+        state.last_round_summary.round_number !== lastRoundNumber
+    ) {
+        const s = state.last_round_summary;
+        const myPoints = s.round_points[userId] || 0;
+        const oppId = Object.keys(s.round_points).find((k) => parseInt(k) !== userId);
+        const oppPoints = oppId ? (s.round_points[oppId] || 0) : 0;
+        showInfoModal(
+            "پایان دست " + s.round_number + "\n\n" +
+            "امتیاز این دست من: " + myPoints + "\n" +
+            "امتیاز این دست حریف: " + oppPoints + "\n\n" +
+            "امتیاز کل من: " + (s.total_score[userId] || 0) + "\n" +
+            "امتیاز کل حریف: " + (oppId ? (s.total_score[oppId] || 0) : 0)
+        );
+    }
+    if (lastRoundNumber === null) {
+        lastRoundNumber = state.round_number;
+    } else if (state.last_round_summary) {
+        lastRoundNumber = state.last_round_summary.round_number;
+    }
+
+    if (state.match_finished) {
+        clearInterval(pollTimer);
+        clearInterval(turnTimerInterval);
+        showScreen("finished");
+        let text;
+        if (state.match_winner === null || state.match_winner === undefined) {
+            text = "🤝 مساوی شد!";
+        } else if (state.match_winner === userId) {
+            text = "🎉 بردی!";
+        } else {
+            text = "😔 باختی";
+        }
+        document.getElementById("finished-status").innerText = text;
+        return;
+    }
+
+    const myTurn = round.current_turn === userId;
+
+    document.getElementById("game-status").innerText =
+        (myTurn ? "نوبت توئه" : "منتظر حریف...") + "  |  دست " + (state.round_number || 1);
+
+    document.getElementById("turn-timer").style.visibility = "visible";
+
+    const scoreRow = document.getElementById("score-row");
+    scoreRow.innerHTML = "";
+    const totalScore = state.total_score || {};
+    const players = [state.player_a, state.player_b];
+    players.forEach((p) => {
+        if (!p) return;
+        const label = (p.user_id === userId) ? "من" : "حریف";
+        const div = document.createElement("div");
+        div.innerHTML =
+            label + "<br>امتیاز: " + (totalScore[p.user_id] || 0) +
+            "<br><span style='font-size:12px;color:#777'>جمع‌شده: " + p.captured_count + "</span>";
+        scoreRow.appendChild(div);
+    });
+
+    const trickArea = document.getElementById("trick-area");
+    trickArea.innerHTML = "";
+    (round.table_cards || []).forEach((card) => {
+        const div = document.createElement("div");
+        div.className = "card landing" + (RED_SUITS.includes(card.suit) ? " red" : "");
+        div.innerHTML = cardInner(card);
+        trickArea.appendChild(div);
+    });
+
+    // انتخاب ترکیب ۱۱ (وقتی چند حالت جمع‌کردن ممکنه)
+    const pending = state.pending_capture;
+    if (pending && pending.user_id === userId) {
+        if (capturePromptShownFor !== pending.card_index + "-" + round.cards_played_count) {
+            capturePromptShownFor = pending.card_index + "-" + round.cards_played_count;
+            showCaptureOptions(pending);
+        }
+    } else {
+        document.getElementById("capture-modal").style.display = "none";
+    }
+
+    const iHavePendingCapture = !!(pending && pending.user_id === userId);
+
+    const handDiv = document.getElementById("hand");
+    handDiv.innerHTML = "";
+    (state.my_hand || []).forEach((card, index) => {
+        const div = document.createElement("div");
+        const canPlay = myTurn && !iHavePendingCapture && !(pending && pending.user_id !== userId);
+        div.className = "card" +
+            (RED_SUITS.includes(card.suit) ? " red" : "") +
+            (canPlay ? " playable" : " disabled");
+        div.innerHTML = cardInner(card);
+        if (canPlay) {
+            div.onclick = () => playCard(index);
+        }
+        handDiv.appendChild(div);
+    });
+}
+
+function showCaptureOptions(pending) {
+    const container = document.getElementById("capture-options");
+    container.innerHTML = "";
+
+    pending.options.forEach((opt) => {
+        const div = document.createElement("div");
+        div.className = "option-card";
+
+        const capturedText = opt.captured.map(cardLabel).join(" + ");
+        let extra = "";
+        if (opt.is_jack_sweep) extra += " 🃏 جمع‌کردن با سرباز";
+        if (opt.is_sour) extra += " 🔥 سور!";
+
+        div.innerHTML =
+            "با " + cardLabel(opt.played_card) + " جمع می‌کنی: " + capturedText + extra;
+
+        div.onclick = () => chooseCaptureOption(opt.option_id);
+        container.appendChild(div);
+    });
+
+    document.getElementById("capture-modal").style.display = "flex";
+}
+
+let isSubmittingMove = false;
+
+async function chooseCaptureOption(optionId) {
+    if (isSubmittingMove) return;
+    isSubmittingMove = true;
+
+    document.getElementById("capture-modal").style.display = "none";
+
+    const res = await api("/api/chahar_barg/game/choose", "POST", {
+        room_id: roomId,
+        user_id: userId,
+        option_id: optionId,
+    });
+
+    isSubmittingMove = false;
+
+    if (res.success) {
+        renderGame(res.state);
+    } else {
+        refreshGame();
+    }
+}
+
+async function playCard(index) {
+    if (isSubmittingMove) return;
+    isSubmittingMove = true;
+
+    const res = await api("/api/chahar_barg/game/play", "POST", {
+        room_id: roomId,
+        user_id: userId,
+        card_index: index,
+    });
+
+    isSubmittingMove = false;
+
+    if (res.success) {
+        renderGame(res.state);
+    } else {
+        refreshGame();
+    }
+}
+
+// اگه کاربر وسط یه بازیِ شروع‌شده بوده، به‌جای پرش خودکار، دکمه‌ی
+// «ادامه بازی فعال» رو نشون می‌دیم تا خودش انتخاب کنه.
+(async function checkForActiveRoom() {
+    const res = await api("/api/chahar_barg/room/my-active/" + userId, "GET");
+
+    if (!res.success || !res.room_id) return;
+
+    const room = res.room;
+    if (!room || !room.is_started) return;
+
+    const gameCheck = await api("/api/chahar_barg/game/" + res.room_id + "?user_id=" + userId, "GET");
+    if (gameCheck.success && gameCheck.state && gameCheck.state.match_finished) {
+        return;
+    }
+
+    activeRoomId = res.room_id;
+    document.getElementById("continue-active-button").style.display = "block";
+})();
+
 </script>
+
 </body>
 </html>
