@@ -12,6 +12,23 @@ from api.hokm import (
 from api.profile import register_or_get_user, get_profile
 from api.matchmaking import find_match, cancel_matchmaking, waiting_queue, matched_rooms
 
+from api.chahar_barg_room import (
+    get_room as cb_get_room,
+    mark_ready as cb_mark_ready,
+    get_active_room_id as cb_get_active_room_id,
+)
+from api.chahar_barg_matchmaking import (
+    find_match as cb_find_match,
+    cancel_matchmaking as cb_cancel_matchmaking,
+)
+from api.chahar_barg import (
+    start_chahar_barg,
+    play_card as cb_play_card,
+    choose_capture_option as cb_choose_capture_option,
+    get_game_state as cb_get_game_state,
+    forfeit_game as cb_forfeit_game,
+)
+
 
 router = APIRouter()
 
@@ -59,6 +76,37 @@ class PlayCardRequest(BaseModel):
 
 
 class ForfeitRequest(BaseModel):
+    room_id: str
+    user_id: int
+
+
+class CBMatchmakingRequest(BaseModel):
+    user_id: int
+    username: str
+
+
+class CBReadyRequest(BaseModel):
+    room_id: str
+    user_id: int
+
+
+class CBStartGameRequest(BaseModel):
+    room_id: str
+
+
+class CBPlayCardRequest(BaseModel):
+    room_id: str
+    user_id: int
+    card_index: int
+
+
+class CBChooseOptionRequest(BaseModel):
+    room_id: str
+    user_id: int
+    option_id: int
+
+
+class CBForfeitRequest(BaseModel):
     room_id: str
     user_id: int
 
@@ -336,4 +384,170 @@ async def matchmaking_debug_api():
             rid: room.to_dict()
             for rid, room in api.room.rooms.items()
         },
+    }
+
+
+# =========================================================
+# چهاربرگ (Chahar Barg)
+# =========================================================
+
+
+@router.post("/api/chahar_barg/matchmaking/find")
+async def cb_matchmaking_find_api(request: CBMatchmakingRequest):
+    result = cb_find_match(
+        request.user_id,
+        request.username,
+    )
+
+    return {
+        "success": True,
+        **result,
+    }
+
+
+@router.post("/api/chahar_barg/matchmaking/cancel")
+async def cb_matchmaking_cancel_api(request: CBMatchmakingRequest):
+    cb_cancel_matchmaking(request.user_id)
+
+    return {
+        "success": True,
+    }
+
+
+@router.get("/api/chahar_barg/room/my-active/{user_id}")
+async def cb_get_my_active_room_api(user_id: int):
+    room_id = cb_get_active_room_id(user_id)
+
+    if room_id is None:
+        return {
+            "success": True,
+            "room_id": None,
+        }
+
+    room = cb_get_room(room_id)
+
+    if room is None:
+        return {
+            "success": True,
+            "room_id": None,
+        }
+
+    return {
+        "success": True,
+        "room_id": room_id,
+        "room": room.to_dict(),
+    }
+
+
+@router.post("/api/chahar_barg/room/ready")
+async def cb_mark_ready_api(request: CBReadyRequest):
+    success = cb_mark_ready(
+        request.room_id,
+        request.user_id,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Cannot mark ready",
+        }
+
+    return {
+        "success": True,
+    }
+
+
+@router.post("/api/chahar_barg/game/start")
+async def cb_start_game_api(request: CBStartGameRequest):
+    game = start_chahar_barg(request.room_id)
+
+    if game is None:
+        return {
+            "success": False,
+            "error": "Cannot start game",
+        }
+
+    return {
+        "success": True,
+        "state": game.get_state(),
+    }
+
+
+@router.post("/api/chahar_barg/game/play")
+async def cb_play_card_api(request: CBPlayCardRequest):
+    success = cb_play_card(
+        request.room_id,
+        request.user_id,
+        request.card_index,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Invalid card move",
+        }
+
+    return {
+        "success": True,
+        "state": cb_get_game_state(
+            request.room_id,
+            request.user_id,
+        ),
+    }
+
+
+@router.post("/api/chahar_barg/game/choose")
+async def cb_choose_option_api(request: CBChooseOptionRequest):
+    success = cb_choose_capture_option(
+        request.room_id,
+        request.user_id,
+        request.option_id,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Invalid choice",
+        }
+
+    return {
+        "success": True,
+        "state": cb_get_game_state(
+            request.room_id,
+            request.user_id,
+        ),
+    }
+
+
+@router.get("/api/chahar_barg/game/{room_id}")
+async def cb_get_game_api(room_id: str, user_id: int = None):
+    state = cb_get_game_state(room_id, user_id)
+
+    if state is None:
+        return {
+            "success": False,
+            "error": "Game not found",
+        }
+
+    return {
+        "success": True,
+        "state": state,
+    }
+
+
+@router.post("/api/chahar_barg/game/forfeit")
+async def cb_forfeit_game_api(request: CBForfeitRequest):
+    success = cb_forfeit_game(
+        request.room_id,
+        request.user_id,
+    )
+
+    if not success:
+        return {
+            "success": False,
+            "error": "Cannot forfeit",
+        }
+
+    return {
+        "success": True,
     }
