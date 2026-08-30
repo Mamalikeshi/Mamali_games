@@ -16,6 +16,7 @@ Fully independent from other games (per project rule).
 """
 
 import random
+import time
 
 from games.chahar_barg.card import Card
 from games.chahar_barg.deck import Deck
@@ -35,6 +36,8 @@ from games.chahar_barg.player import Player
 
 
 HAFT_KHAJ_POINTS = 7
+TURN_TIMEOUT_SECONDS = 20
+DISCONNECT_TIMEOUT_SECONDS = 60
 
 
 class ChaharBargGame:
@@ -140,7 +143,7 @@ class ChaharBargGame:
         # تعیین شروع‌کننده
         # -----------------------------------------------------
 
-        self.state.current_turn = starter_user_id
+        self.state.set_turn(starter_user_id)
 
     # =========================================================
     # پخش چهار کارت
@@ -409,6 +412,8 @@ class ChaharBargGame:
         if self.state is None:
             return
 
+        self.state.cards_played_count += 1
+
         player = self.get_player(user_id)
 
         if player is None:
@@ -501,7 +506,7 @@ class ChaharBargGame:
             and not self.state.round_over
         ):
 
-            self.state.current_turn = (
+            self.state.set_turn(
                 self._other_player(
                     user_id
                 ).user_id
@@ -894,3 +899,99 @@ class ChaharBargGame:
     def is_finished(self) -> bool:
 
         return self.match_finished
+
+    # =========================================================
+    # تایمر نوبت و تشخیص قطع ارتباط
+    # =========================================================
+
+    def check_timeouts(self):
+
+        if self.match_finished:
+            return
+
+        if self.state is None:
+            return
+
+        # ۱. اگه بازیکنی بیشتر از ۶۰ ثانیه پیداش نبوده، ببازونش
+        for player in self.room.players:
+
+            last = self.state.last_seen.get(
+                player.user_id
+            )
+
+            if last is None:
+                continue
+
+            if (
+                time.time() - last
+                > DISCONNECT_TIMEOUT_SECONDS
+            ):
+
+                opponent = self._other_player(
+                    player.user_id
+                )
+
+                self.match_finished = True
+                self.match_winner = opponent.user_id
+
+                return
+
+        # ۲. اگه نوبت کسی بیشتر از ۲۰ ثانیه طول کشیده، خودکار براش بازی کن
+        if self.state.turn_started_at is None:
+            return
+
+        elapsed = (
+            time.time()
+            - self.state.turn_started_at
+        )
+
+        if elapsed <= TURN_TIMEOUT_SECONDS:
+            return
+
+        self._auto_play_for_current_turn()
+
+    def _auto_play_for_current_turn(self):
+
+        if self.state is None:
+            return
+
+        current_turn = self.state.current_turn
+
+        if current_turn is None:
+            return
+
+        # اگه منتظر انتخاب ترکیب ۱۱ بود، خودکار اولین گزینه رو انتخاب کن
+        if (
+            self.pending_capture is not None
+            and self.pending_capture["user_id"]
+            == current_turn
+        ):
+
+            self.choose_capture_option(
+                current_turn,
+                0,
+            )
+
+            return
+
+        player = self.get_player(current_turn)
+
+        if player is None or not player.hand:
+            return
+
+        self.play_card(current_turn, 0)
+
+    def forfeit(self, user_id: int):
+
+        if self.match_finished:
+            return False
+
+        opponent = self._other_player(user_id)
+
+        if opponent is None:
+            return False
+
+        self.match_finished = True
+        self.match_winner = opponent.user_id
+
+        return True
