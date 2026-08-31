@@ -82,6 +82,9 @@ class ChaharBargGame:
         if len(self.room.players) != 2:
             return False
 
+        if not self.room.start():
+            return False
+
         starter = random.choice(
             [
                 self.player_a.user_id,
