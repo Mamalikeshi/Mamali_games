@@ -1,36 +1,28 @@
 """
-Main game engine for Domino (Double-Six set) - 2 player mode.
-Fully independent from other games (per project rule).
+Main game engine for Domino - 2 player mode.
+Standard Double-Six Domino.
 
-قوانین کلی:
-- هر بازیکن ۷ مهره می‌گیرد.
-- دست اول: پخش تکرار می‌شود تا حداقل یکی از دو بازیکن یک مهره جفت داشته باشد.
-- صاحب بالاترین جفت شروع‌کننده است و باید همان جفت را اولین حرکت بازی کند.
-- از حرکت دوم به بعد، هر مهره قابل‌بازی آزادانه قابل انداختن است.
-- از دست دوم به بعد، شروع‌کننده برعکس دست قبل می‌شود.
-- اگر بازیکنی مهره قابل‌بازی نداشته باشد، باید از Boneyard بکشد.
-- اگر مهره کشیده‌شده قابل‌بازی باشد، بازیکن باید همان مهره را بلافاصله بازی کند.
-- اگر فقط یک مهره در Boneyard باقی مانده باشد، آن مهره کشیده نمی‌شود.
-- اگر هیچ‌کدام از بازیکنان نتوانند بازی کنند، دست بسته می‌شود.
-- در دست بسته، بازیکنی که مجموع امتیاز مهره‌های دستش کمتر است برنده می‌شود.
-- اولین بازیکنی که دستش تمام شود، برنده دست است.
-- امتیاز مهره‌های دست حریف به برنده تعلق می‌گیرد.
-- بازی تا ۱۰۱ امتیاز ادامه دارد.
+Rules:
+- 2 players only.
+- 28 tiles in the full set.
+- Each player receives 7 tiles.
+- Remaining tiles form the boneyard.
+- A tile can be played when one side matches
+  one of the two open ends of the board.
+- If the player has no legal move, they draw
+  from the boneyard until they can play or
+  the boneyard becomes empty.
+- If no legal move exists after the boneyard
+  is empty, the player passes.
+- A round ends when:
+    1. A player has no tiles left, or
+    2. Both players are blocked.
 """
 
 from games.domino.deck import Deck
-from games.domino.state import DominoState
-from games.domino.rules import (
-    find_highest_double,
-    hand_has_double,
-    can_play_tile,
-    valid_sides_for_tile,
-    place_tile,
-    TILES_PER_PLAYER,
-    MATCH_TARGET_SCORE,
-)
-from games.domino.room import Room
 from games.domino.player import Player
+from games.domino.room import Room
+from games.domino.state import DominoState
 from games.domino.tile import Tile
 
 
@@ -40,50 +32,27 @@ class DominoGame:
 
         self.room = room
 
+        if len(room.players) != 2:
+            raise ValueError(
+                "Domino requires exactly 2 players."
+            )
+
         self.player_a: Player = room.players[0]
         self.player_b: Player = room.players[1]
 
         self.deck: Deck | None = None
         self.state: DominoState | None = None
 
-        self.total_score: dict[int, int] = {
-            self.player_a.user_id: 0,
-            self.player_b.user_id: 0,
-        }
-
-        self.round_number: int = 0
-
-        self.last_round_starter: int | None = None
-
         self.match_finished: bool = False
         self.match_winner: int | None = None
 
+        self.round_finished: bool = False
+        self.round_winner: int | None = None
+
         self.last_round_summary: dict | None = None
 
-        # -----------------------------------------------------
-        # اگر بازیکن مهره‌ای از Boneyard بکشد که قابل بازی باشد،
-        # باید همان مهره را بلافاصله بازی کند.
-        #
-        # مقدار:
-        # user_id -> index of forced tile
-        # -----------------------------------------------------
-
-        self.pending_forced_tile_index: dict[
-            int,
-            int | None,
-        ] = {}
-
-        # -----------------------------------------------------
-        # فقط برای اولین حرکت اولین دست.
-        #
-        # بالاترین جفتی که باعث شروع بازیکن شده،
-        # باید اولین مهره‌ای باشد که بازی می‌کند.
-        # -----------------------------------------------------
-
-        self.first_round_required_tile: Tile | None = None
-
     # =========================================================
-    # شروع مسابقه
+    # شروع بازی
     # =========================================================
 
     def start_game(self) -> bool:
@@ -91,140 +60,126 @@ class DominoGame:
         if len(self.room.players) != 2:
             return False
 
-        self._start_round(
-            starter_user_id=None,
-            is_first_round=True,
-        )
+        self.deck = Deck()
+        self.deck.shuffle()
 
-        return True
+        self.state = DominoState()
 
-    # =========================================================
-    # شروع یک دست
-    # =========================================================
+        self.match_finished = False
+        self.match_winner = None
 
-    def _start_round(
-        self,
-        starter_user_id: int | None,
-        is_first_round: bool = False,
-    ):
+        self.round_finished = False
+        self.round_winner = None
 
-        self.round_number += 1
-
-        self.first_round_required_tile = None
-
-        # -----------------------------------------------------
-        # پاک کردن دست قبلی
-        # -----------------------------------------------------
+        self.last_round_summary = None
 
         self.player_a.hand = []
         self.player_b.hand = []
 
-        # =====================================================
-        # دست اول
-        #
-        # تا وقتی حداقل یکی از بازیکنان جفت نداشته باشد،
-        # دوباره پخش می‌کنیم.
-        # =====================================================
+        self._deal_initial_tiles()
 
-        if is_first_round:
-
-            while True:
-
-                self.deck = Deck()
-                self.deck.shuffle()
-
-                dealt_a = self.deck.draw(
-                    TILES_PER_PLAYER
-                )
-
-                dealt_b = self.deck.draw(
-                    TILES_PER_PLAYER
-                )
-
-                if (
-                    hand_has_double(dealt_a)
-                    or hand_has_double(dealt_b)
-                ):
-                    self.player_a.add_to_hand(
-                        dealt_a
-                    )
-
-                    self.player_b.add_to_hand(
-                        dealt_b
-                    )
-
-                    break
-
-        # =====================================================
-        # دست‌های بعدی
-        # =====================================================
-
-        else:
-
-            self.deck = Deck()
-            self.deck.shuffle()
-
-            self.player_a.add_to_hand(
-                self.deck.draw(
-                    TILES_PER_PLAYER
-                )
-            )
-
-            self.player_b.add_to_hand(
-                self.deck.draw(
-                    TILES_PER_PLAYER
-                )
-            )
-
-        # -----------------------------------------------------
-        # ساخت state جدید
-        # -----------------------------------------------------
-
-        self.state = DominoState()
-
-        self.pending_forced_tile_index = {
-            self.player_a.user_id: None,
-            self.player_b.user_id: None,
-        }
-
-        # =====================================================
-        # تعیین شروع‌کننده
-        # =====================================================
-
-        if is_first_round:
-
-            hands = {
-                self.player_a.user_id:
-                    self.player_a.hand,
-
-                self.player_b.user_id:
-                    self.player_b.hand,
-            }
-
-            starter = find_highest_double(
-                hands
-            )
-
-            starter_hand = hands[starter]
-
-            highest_double_value = max(
-                tile.left
-                for tile in starter_hand
-                if tile.is_double
-            )
-
-            self.first_round_required_tile = Tile(
-                highest_double_value,
-                highest_double_value,
-            )
-
-        else:
-
-            starter = starter_user_id
-
-        self.last_round_starter = starter
+        starter = self._choose_starter()
 
         self.state.current_turn = starter
+
+        return True
+
+    # =========================================================
+    # پخش ۷ مهره برای هر بازیکن
+    # =========================================================
+
+    def _deal_initial_tiles(self):
+
+        if self.deck is None:
+            return
+
+        self.player_a.add_to_hand(
+            self.deck.draw(7)
+        )
+
+        self.player_b.add_to_hand(
+            self.deck.draw(7)
+        )
+
+    # =========================================================
+    # انتخاب شروع‌کننده
+    #
+    # بازیکنی که بزرگ‌ترین Double را دارد شروع می‌کند.
+    # =========================================================
+
+    def _choose_starter(self) -> int:
+
+        player_a_double = self._highest_double(
+            self.player_a.hand
+        )
+
+        player_b_double = self._highest_double(
+            self.player_b.hand
+        )
+
+        if player_a_double is not None and player_b_double is None:
+            return self.player_a.user_id
+
+        if player_b_double is not None and player_a_double is None:
+            return self.player_b.user_id
+
+        if (
+            player_a_double is not None
+            and player_b_double is not None
+        ):
+
+            if player_a_double > player_b_double:
+                return self.player_a.user_id
+
+            if player_b_double > player_a_double:
+                return self.player_b.user_id
+
+        # اگر هیچ‌کدام Double نداشتند،
+        # بازیکنی که مجموع بزرگ‌تری دارد شروع می‌کند.
+
+        player_a_total = sum(
+            self._tile_value(tile)
+            for tile in self.player_a.hand
+        )
+
+        player_b_total = sum(
+            self._tile_value(tile)
+            for tile in self.player_b.hand
+        )
+
+        if player_a_total > player_b_total:
+            return self.player_a.user_id
+
+        if player_b_total > player_a_total:
+            return self.player_b.user_id
+
+        # حالت بسیار نادر مساوی:
+        # بازیکن A شروع می‌کند.
+
+        return self.player_a.user_id
+
+    # =========================================================
+    # پیدا کردن بزرگ‌ترین Double
+    # =========================================================
+
+    def _highest_double(
+        self,
+        hand: list[Tile],
+    ) -> int | None:
+
+        doubles = []
+
+        for tile in hand:
+
+            left, right = self._tile_sides(tile)
+
+            if left == right:
+                doubles.append(left)
+
+        if not doubles:
+            return None
+
+        return max(doubles)
 
     # =========================================================
     # پیدا کردن بازیکن
@@ -258,219 +213,93 @@ class DominoGame:
         return self.player_a
 
     # =========================================================
-    # آیا بازیکن حداقل یک مهره قابل بازی دارد؟
+    # مقدار دو طرف مهره
+    #
+    # برای سازگاری با Tile های مختلف،
+    # چند نام متداول را پشتیبانی می‌کنیم.
     # =========================================================
 
-    def _player_can_play(
+    def _tile_sides(
         self,
-        player: Player,
+        tile: Tile,
+    ) -> tuple[int, int]:
+
+        if hasattr(tile, "left") and hasattr(tile, "right"):
+            return tile.left, tile.right
+
+        if hasattr(tile, "a") and hasattr(tile, "b"):
+            return tile.a, tile.b
+
+        if hasattr(tile, "value_a") and hasattr(tile, "value_b"):
+            return tile.value_a, tile.value_b
+
+        if hasattr(tile, "values"):
+            values = tile.values
+
+            return values[0], values[1]
+
+        raise AttributeError(
+            "Tile must have left/right, a/b, "
+            "value_a/value_b, or values."
+        )
+
+    # =========================================================
+    # مجموع ارزش مهره
+    # =========================================================
+
+    def _tile_value(
+        self,
+        tile: Tile,
+    ) -> int:
+
+        left, right = self._tile_sides(tile)
+
+        return left + right
+
+    # =========================================================
+    # آیا مهره قابل بازی است؟
+    # =========================================================
+
+    def can_play_tile(
+        self,
+        tile: Tile,
     ) -> bool:
 
         if self.state is None:
             return False
 
-        for tile in player.hand:
+        # اولین مهره بازی
+        if not self.state.board_tiles:
+            return True
 
-            if can_play_tile(
-                tile,
-                self.state.left_end,
-                self.state.right_end,
-            ):
-                return True
+        left, right = self._tile_sides(tile)
 
-        return False
+        return (
+            left == self.state.left_end
+            or right == self.state.left_end
+            or left == self.state.right_end
+            or right == self.state.right_end
+        )
 
     # =========================================================
-    # کشیدن مهره از Boneyard
+    # مهره‌های قابل بازی یک بازیکن
     # =========================================================
 
-    def draw_from_boneyard(
+    def get_playable_tiles(
         self,
         user_id: int,
-    ) -> dict:
-
-        if self.state is None:
-            return {
-                "success": False,
-                "reason": "round_not_active",
-            }
-
-        if (
-            self.match_finished
-            or self.state.round_over
-        ):
-            return {
-                "success": False,
-                "reason": "round_not_active",
-            }
-
-        if (
-            self.state.current_turn
-            != user_id
-        ):
-            return {
-                "success": False,
-                "reason": "not_your_turn",
-            }
+    ) -> list[Tile]:
 
         player = self.get_player(user_id)
 
         if player is None:
-            return {
-                "success": False,
-                "reason": "player_not_found",
-            }
+            return []
 
-        # -----------------------------------------------------
-        # اگر مهره قابل بازی دارد،
-        # نباید از Boneyard بکشد.
-        # -----------------------------------------------------
-
-        if self._player_can_play(player):
-
-            return {
-                "success": False,
-                "reason": "you_have_a_playable_tile",
-            }
-
-        # -----------------------------------------------------
-        # اگر فقط یک مهره باقی مانده،
-        # آن را نمی‌کشیم.
-        # -----------------------------------------------------
-
-        if self.deck.remaining() <= 1:
-
-            self._pass_turn_or_check_blocked(
-                user_id
-            )
-
-            return {
-                "success": True,
-                "drew_tile": False,
-                "playable": False,
-            }
-
-        # -----------------------------------------------------
-        # کشیدن یک مهره
-        # -----------------------------------------------------
-
-        drawn = self.deck.draw_one()
-
-        player.add_to_hand(
-            [drawn]
-        )
-
-        # -----------------------------------------------------
-        # اگر مهره قابل بازی بود،
-        # همان مهره اجباری می‌شود.
-        # -----------------------------------------------------
-
-        if can_play_tile(
-            drawn,
-            self.state.left_end,
-            self.state.right_end,
-        ):
-
-            new_index = len(player.hand) - 1
-
-            self.pending_forced_tile_index[
-                user_id
-            ] = new_index
-
-            return {
-                "success": True,
-                "drew_tile": True,
-                "playable": True,
-                "forced_tile_index": new_index,
-            }
-
-        # -----------------------------------------------------
-        # مهره قابل بازی نیست.
-        #
-        # بازیکن باید دوباره بکشد.
-        # -----------------------------------------------------
-
-        return {
-            "success": True,
-            "drew_tile": True,
-            "playable": False,
-        }
-
-    # =========================================================
-    # رد شدن نوبت / بررسی بسته شدن بازی
-    # =========================================================
-
-    def _pass_turn_or_check_blocked(
-        self,
-        from_user_id: int,
-    ):
-
-        other = self._other_player(
-            from_user_id
-        )
-
-        self.state.current_turn = (
-            other.user_id
-        )
-
-        # -----------------------------------------------------
-        # اگر حریف هم مهره قابل بازی ندارد
-        # و Boneyard دیگر قابل کشیدن نیست،
-        # بازی بسته شده است.
-        # -----------------------------------------------------
-
-        if (
-            not self._player_can_play(other)
-            and self.deck.remaining() <= 1
-        ):
-
-            self._end_round_blocked()
-
-    # =========================================================
-    # پایان دست بسته
-    # =========================================================
-
-    def _end_round_blocked(self):
-
-        self.state.is_blocked = True
-
-        self._finish_round_with_lowest_hand()
-
-    # =========================================================
-    # انتخاب برنده دست بسته
-    # =========================================================
-
-    def _finish_round_with_lowest_hand(self):
-
-        sum_a = (
-            self.player_a.hand_pip_sum()
-        )
-
-        sum_b = (
-            self.player_b.hand_pip_sum()
-        )
-
-        if sum_a < sum_b:
-
-            winner = self.player_a
-            points = sum_b
-
-        elif sum_b < sum_a:
-
-            winner = self.player_b
-            points = sum_a
-
-        else:
-
-            winner = None
-            points = 0
-
-        self._close_round(
-            winner.user_id
-            if winner is not None
-            else None,
-            points,
-        )
+        return [
+            tile
+            for tile in player.hand
+            if self.can_play_tile(tile)
+        ]
 
     # =========================================================
     # بازی کردن مهره
@@ -480,324 +309,388 @@ class DominoGame:
         self,
         user_id: int,
         tile_index: int,
-        side: str,
-    ) -> dict:
+        side: str | None = None,
+    ) -> bool:
+
+        if self.match_finished:
+            return False
+
+        if self.round_finished:
+            return False
 
         if self.state is None:
+            return False
 
-            return {
-                "success": False,
-                "reason": "round_not_active",
-            }
+        if self.state.current_turn != user_id:
+            return False
 
-        if (
-            self.match_finished
-            or self.state.round_over
-        ):
-
-            return {
-                "success": False,
-                "reason": "round_not_active",
-            }
-
-        # -----------------------------------------------------
-        # بررسی نوبت
-        # -----------------------------------------------------
-
-        if (
-            self.state.current_turn
-            != user_id
-        ):
-
-            return {
-                "success": False,
-                "reason": "not_your_turn",
-            }
-
-        player = self.get_player(
-            user_id
-        )
+        player = self.get_player(user_id)
 
         if player is None:
-
-            return {
-                "success": False,
-                "reason": "player_not_found",
-            }
-
-        # -----------------------------------------------------
-        # بررسی index
-        # -----------------------------------------------------
+            return False
 
         if (
             tile_index < 0
             or tile_index >= len(player.hand)
         ):
-
-            return {
-                "success": False,
-                "reason": "invalid_tile_index",
-            }
+            return False
 
         tile = player.hand[tile_index]
 
-        # =====================================================
-        # مهره اجباری کشیده‌شده
-        # =====================================================
+        if not self.can_play_tile(tile):
+            return False
 
-        forced_index = (
-            self.pending_forced_tile_index.get(
-                user_id
-            )
-        )
+        # اولین مهره روی زمین
+        if not self.state.board_tiles:
 
-        if (
-            forced_index is not None
-            and tile_index != forced_index
-        ):
+            player.remove_from_hand(tile)
 
-            return {
-                "success": False,
-                "reason": "must_play_drawn_tile",
-            }
+            self.state.board_tiles.append(tile)
 
-        # =====================================================
-        # اولین حرکت اولین دست
-        #
-        # حتماً باید بالاترین جفت بازی شود.
-        # =====================================================
+            left, right = self._tile_sides(tile)
 
-        if (
-            self.round_number == 1
-            and len(self.state.board) == 0
-            and self.first_round_required_tile
-            is not None
-        ):
+            self.state.left_end = left
+            self.state.right_end = right
 
-            if (
-                tile
-                != self.first_round_required_tile
-            ):
+            self.state.last_player = user_id
 
-                return {
-                    "success": False,
-                    "reason":
-                        "must_play_starting_double",
-                }
+            self._after_play(user_id)
 
-        # =====================================================
-        # بررسی قابل بازی بودن روی سمت انتخاب‌شده
-        # =====================================================
+            return True
 
-        valid_sides = valid_sides_for_tile(
-            tile,
-            self.state.left_end,
-            self.state.right_end,
-        )
-
-        if side not in valid_sides:
-
-            return {
-                "success": False,
-                "reason":
-                    "tile_not_playable_on_this_side",
-            }
-
-        # =====================================================
-        # قرار دادن مهره
-        # =====================================================
-
-        result = place_tile(
+        # بازی روی زمین
+        success = self._place_tile(
+            player,
             tile,
             side,
-            self.state.left_end,
-            self.state.right_end,
         )
 
-        player.remove_from_hand(
-            tile
+        if not success:
+            return False
+
+        self.state.last_player = user_id
+
+        self._after_play(user_id)
+
+        return True
+
+    # =========================================================
+    # قرار دادن مهره روی زمین
+    # =========================================================
+
+    def _place_tile(
+        self,
+        player: Player,
+        tile: Tile,
+        side: str | None,
+    ) -> bool:
+
+        left, right = self._tile_sides(tile)
+
+        left_end = self.state.left_end
+        right_end = self.state.right_end
+
+        can_left = (
+            left == left_end
+            or right == left_end
         )
 
-        # -----------------------------------------------------
-        # اضافه کردن به board
-        # -----------------------------------------------------
+        can_right = (
+            left == right_end
+            or right == right_end
+        )
 
-        if (
-            side == "left"
-            or (
-                self.state.left_end is None
-                and self.state.right_end is None
-            )
-        ):
+        # اگر فقط یک طرف ممکن باشد،
+        # همان طرف انتخاب می‌شود.
 
-            self.state.board.insert(
+        if can_left and not can_right:
+            side = "left"
+
+        elif can_right and not can_left:
+            side = "right"
+
+        # اگر هر دو طرف ممکن باشند،
+        # بازیکن باید طرف را مشخص کند.
+
+        elif can_left and can_right:
+
+            if side not in ("left", "right"):
+                return False
+
+        else:
+            return False
+
+        player.remove_from_hand(tile)
+
+        if side == "left":
+
+            self.state.board_tiles.insert(
                 0,
                 tile,
             )
 
-        else:
+            if left == left_end:
+                self.state.left_end = right
+            else:
+                self.state.left_end = left
 
-            self.state.board.append(
-                tile
-            )
+            return True
 
-        # -----------------------------------------------------
-        # به‌روزرسانی دو سر بازی
-        # -----------------------------------------------------
+        if side == "right":
 
-        self.state.left_end = (
-            result["new_left_end"]
+            self.state.board_tiles.append(tile)
+
+            if left == right_end:
+                self.state.right_end = right
+            else:
+                self.state.right_end = left
+
+            return True
+
+        return False
+
+    # =========================================================
+    # خرید مهره از Boneyard
+    # =========================================================
+
+    def draw_tile(
+        self,
+        user_id: int,
+    ) -> Tile | None:
+
+        if self.match_finished:
+            return None
+
+        if self.round_finished:
+            return None
+
+        if self.state is None:
+            return None
+
+        if self.state.current_turn != user_id:
+            return None
+
+        player = self.get_player(user_id)
+
+        if player is None:
+            return None
+
+        if self.deck is None:
+            return None
+
+        # اگر مهره قابل بازی دارد،
+        # نباید مجبور به خرید باشد.
+
+        if self.get_playable_tiles(user_id):
+            return None
+
+        if self.deck.is_empty():
+            return None
+
+        drawn = self.deck.draw(1)
+
+        if not drawn:
+            return None
+
+        tile = drawn[0]
+
+        player.add_to_hand([tile])
+
+        return tile
+
+    # =========================================================
+    # پاس دادن
+    # =========================================================
+
+    def pass_turn(
+        self,
+        user_id: int,
+    ) -> bool:
+
+        if self.match_finished:
+            return False
+
+        if self.round_finished:
+            return False
+
+        if self.state is None:
+            return False
+
+        if self.state.current_turn != user_id:
+            return False
+
+        # بازیکن فقط زمانی می‌تواند Pass کند
+        # که هیچ مهره قابل بازی نداشته باشد
+        # و Boneyard هم خالی باشد.
+
+        if self.get_playable_tiles(user_id):
+            return False
+
+        if self.deck is not None and not self.deck.is_empty():
+            return False
+
+        self.state.pass_count += 1
+
+        # اگر هر دو بازیکن پشت سر هم Pass کنند،
+        # بازی Block شده است.
+
+        if self.state.pass_count >= 2:
+            self._end_round_blocked()
+            return True
+
+        self.state.current_turn = (
+            self._other_player(user_id).user_id
         )
 
-        self.state.right_end = (
-            result["new_right_end"]
-        )
+        return True
 
-        # -----------------------------------------------------
-        # مهره اجباری دیگر اجباری نیست.
-        # -----------------------------------------------------
+    # =========================================================
+    # بعد از بازی مهره
+    # =========================================================
 
-        self.pending_forced_tile_index[
-            user_id
-        ] = None
+    def _after_play(
+        self,
+        user_id: int,
+    ):
 
-        # =====================================================
-        # آیا دست بازیکن خالی شده؟
-        # =====================================================
+        if self.state is None:
+            return
 
-        if len(player.hand) == 0:
+        # چون بازیکن دیگر Pass قبلی را با یک حرکت
+        # شکسته است، شمارنده Pass صفر می‌شود.
 
-            opponent = self._other_player(
+        self.state.pass_count = 0
+
+        # بازیکن تمام مهره‌هایش را بازی کرده است.
+
+        player = self.get_player(user_id)
+
+        if player is not None and not player.hand:
+
+            self._end_round_winner(
                 user_id
             )
 
-            self._close_round(
-                user_id,
-                opponent.hand_pip_sum(),
-            )
+            return
 
-            return {
-                "success": True,
-                "round_over": True,
-            }
+        # نوبت بازیکن مقابل
 
-        # =====================================================
-        # ادامه بازی
-        # =====================================================
-
-        self._pass_turn_or_check_blocked(
-            user_id
+        self.state.current_turn = (
+            self._other_player(user_id).user_id
         )
 
-        return {
-            "success": True,
-            "round_over": False,
-        }
-
     # =========================================================
-    # پایان دست و مسابقه
+    # پایان دور به دلیل تمام شدن مهره‌ها
     # =========================================================
 
-    def _close_round(
+    def _end_round_winner(
         self,
-        winner_user_id: int | None,
-        points: int,
+        user_id: int,
     ):
 
-        if winner_user_id is not None:
+        if self.state is None:
+            return
 
-            self.total_score[
-                winner_user_id
-            ] += points
+        self.round_finished = True
+        self.round_winner = user_id
 
-        self.player_a.score = (
-            self.total_score[
-                self.player_a.user_id
-            ]
-        )
+        winner = self.get_player(user_id)
 
-        self.player_b.score = (
-            self.total_score[
-                self.player_b.user_id
-            ]
+        loser = self._other_player(user_id)
+
+        winner_points = sum(
+            self._tile_value(tile)
+            for tile in loser.hand
         )
 
         self.last_round_summary = {
-
-            "round_number":
-                self.round_number,
-
-            "winner_user_id":
-                winner_user_id,
-
-            "points_awarded":
-                points,
-
-            "was_blocked":
-                self.state.is_blocked,
-
-            "total_score":
-                dict(self.total_score),
+            "winner": user_id,
+            "reason": "empty_hand",
+            "points": winner_points,
+            "remaining_tiles": {
+                winner.user_id: len(winner.hand),
+                loser.user_id: len(loser.hand),
+            },
         }
 
         self.state.round_over = True
 
-        # =====================================================
-        # بررسی پایان کل مسابقه
-        # =====================================================
-
-        if (
-            max(self.total_score.values())
-            >= MATCH_TARGET_SCORE
-        ):
-
-            self.match_finished = True
-
-            if (
-                self.total_score[
-                    self.player_a.user_id
-                ]
-                ==
-                self.total_score[
-                    self.player_b.user_id
-                ]
-            ):
-
-                self.match_winner = None
-
-            else:
-
-                self.match_winner = max(
-                    self.total_score,
-                    key=self.total_score.get,
-                )
-
-        # =====================================================
-        # شروع دست بعد
-        # =====================================================
-
-        else:
-
-            next_starter = (
-                self._other_player(
-                    self.last_round_starter
-                ).user_id
-            )
-
-            self._start_round(
-                starter_user_id=next_starter
-            )
+        self.match_finished = True
+        self.match_winner = user_id
 
     # =========================================================
-    # خروجی وضعیت بازی برای فرانت‌اند
+    # پایان دور به دلیل Block شدن
+    # =========================================================
+
+    def _end_round_blocked(self):
+
+        if self.state is None:
+            return
+
+        self.round_finished = True
+
+        a_points = sum(
+            self._tile_value(tile)
+            for tile in self.player_a.hand
+        )
+
+        b_points = sum(
+            self._tile_value(tile)
+            for tile in self.player_b.hand
+        )
+
+        if a_points < b_points:
+            winner_id = self.player_a.user_id
+
+        elif b_points < a_points:
+            winner_id = self.player_b.user_id
+
+        else:
+            winner_id = None
+
+        self.round_winner = winner_id
+
+        self.last_round_summary = {
+            "winner": winner_id,
+            "reason": "blocked",
+            "points": {
+                self.player_a.user_id: a_points,
+                self.player_b.user_id: b_points,
+            },
+            "remaining_tiles": {
+                self.player_a.user_id:
+                    len(self.player_a.hand),
+                self.player_b.user_id:
+                    len(self.player_b.hand),
+            },
+        }
+
+        self.state.round_over = True
+
+        self.match_finished = True
+        self.match_winner = winner_id
+
+    # =========================================================
+    # وضعیت بازی
     # =========================================================
 
     def get_state(self) -> dict:
 
-        return {
+        if self.state is None:
+            return {
+                "state": None,
+                "player_a": self.player_a.to_dict(),
+                "player_b": self.player_b.to_dict(),
+                "boneyard_remaining": 0,
+                "round_finished": False,
+                "round_winner": None,
+                "match_finished": False,
+                "match_winner": None,
+                "last_round_summary": None,
+            }
 
-            "state":
-                self.state.to_dict(),
+        return {
+            "state": self.state.to_dict(),
 
             "player_a":
                 self.player_a.to_dict(),
@@ -806,13 +699,15 @@ class DominoGame:
                 self.player_b.to_dict(),
 
             "boneyard_remaining":
-                self.deck.remaining(),
+                self.deck.remaining()
+                if self.deck is not None
+                else 0,
 
-            "round_number":
-                self.round_number,
+            "round_finished":
+                self.round_finished,
 
-            "total_score":
-                self.total_score,
+            "round_winner":
+                self.round_winner,
 
             "match_finished":
                 self.match_finished,
@@ -822,9 +717,6 @@ class DominoGame:
 
             "last_round_summary":
                 self.last_round_summary,
-
-            "pending_forced_tile_index":
-                self.pending_forced_tile_index,
         }
 
     # =========================================================
@@ -833,9 +725,28 @@ class DominoGame:
 
     def get_scores(self) -> dict:
 
-        return dict(
-            self.total_score
-        )
+        scores = {
+            self.player_a.user_id: 0,
+            self.player_b.user_id: 0,
+        }
+
+        if self.last_round_summary is not None:
+
+            winner = self.last_round_summary.get(
+                "winner"
+            )
+
+            if winner is not None:
+
+                points = self.last_round_summary.get(
+                    "points",
+                    0,
+                )
+
+                if isinstance(points, int):
+                    scores[winner] = points
+
+        return scores
 
     # =========================================================
     # برنده
