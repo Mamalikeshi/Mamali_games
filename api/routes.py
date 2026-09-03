@@ -28,10 +28,10 @@ from api.chahar_barg import (
     get_game_state as cb_get_game_state,
     forfeit_game as cb_forfeit_game,
 )
-
+from api.domino import router as domino_router
 
 router = APIRouter()
-
+router.include_router(domino_router)
 
 class CreateRoomRequest(BaseModel):
     room_id: str
