@@ -13,7 +13,7 @@ router = APIRouter(
 
 
 # =========================================================
-# حافظه موقت اتاق‌ها و بازی‌ها
+# حافظه موقت
 # =========================================================
 
 rooms: dict[str, Room] = {}
@@ -21,7 +21,7 @@ games: dict[str, DominoGame] = {}
 
 
 # =========================================================
-# مدل‌های درخواست
+# Request Models
 # =========================================================
 
 class CreateRoomRequest(BaseModel):
@@ -41,13 +41,61 @@ class PlayTileRequest(BaseModel):
 
 
 # =========================================================
+# ساخت شناسه اتاق
+# =========================================================
+
+def _next_room_id() -> str:
+    number = 1
+
+    while f"domino-{number}" in rooms:
+        number += 1
+
+    return f"domino-{number}"
+
+
+# =========================================================
+# شروع واقعی بازی
+# =========================================================
+
+def _start_domino_game(room: Room) -> DominoGame:
+
+    if len(room.players) != 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Exactly 2 players are required.",
+        )
+
+    existing_game = games.get(room.room_id)
+
+    if existing_game is not None:
+        return existing_game
+
+    game = DominoGame(room)
+
+    started = game.start_game()
+
+    if not started:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not start Domino game.",
+        )
+
+    # اتاق را هم به حالت شروع‌شده می‌بریم
+    room.start()
+
+    games[room.room_id] = game
+
+    return game
+
+
+# =========================================================
 # ساخت اتاق
 # =========================================================
 
 @router.post("/rooms")
 def create_room(data: CreateRoomRequest):
 
-    room_id = f"domino-{len(rooms) + 1}"
+    room_id = _next_room_id()
 
     room = Room(room_id=room_id)
 
@@ -56,9 +104,7 @@ def create_room(data: CreateRoomRequest):
         username=data.username,
     )
 
-    added = room.add_player(player)
-
-    if not added:
+    if not room.add_player(player):
         raise HTTPException(
             status_code=400,
             detail="Could not add player to room.",
@@ -91,6 +137,12 @@ def join_room(
         raise HTTPException(
             status_code=404,
             detail="Room not found.",
+        )
+
+    if room.is_started:
+        raise HTTPException(
+            status_code=400,
+            detail="Game has already started.",
         )
 
     player = Player(
@@ -139,12 +191,32 @@ def ready_player(
             detail="Player not found.",
         )
 
+    if room.is_started:
+        return {
+            "success": True,
+            "room_id": room.room_id,
+            "user_id": user_id,
+            "is_ready": player.is_ready,
+            "players_ready": sum(
+                1
+                for p in room.players
+                if p.is_ready
+            ),
+            "game_started": True,
+        }
+
     player.is_ready = True
 
     game_started = False
+    game = None
 
+    # وقتی هر دو آماده شدند،
+    # همان لحظه بازی واقعی ساخته می‌شود.
     if room.both_ready():
-        game_started = room.start()
+
+        game = _start_domino_game(room)
+
+        game_started = True
 
     return {
         "success": True,
@@ -157,11 +229,16 @@ def ready_player(
             if p.is_ready
         ),
         "game_started": game_started,
+        "current_turn": (
+            game.state.current_turn
+            if game is not None and game.state is not None
+            else None
+        ),
     }
 
 
 # =========================================================
-# شروع بازی
+# شروع دستی بازی
 # =========================================================
 
 @router.post("/rooms/{room_id}/start")
@@ -187,24 +264,26 @@ def start_game(room_id: str):
             detail="Both players must be ready.",
         )
 
-    game = DominoGame(room)
-
-    started = game.start_game()
-
-    if not started:
-        raise HTTPException(
-            status_code=400,
-            detail="Could not start Domino game.",
-        )
-
-    games[room_id] = game
+    game = _start_domino_game(room)
 
     return {
         "success": True,
         "room_id": room.room_id,
         "game_started": True,
-        "current_turn": game.state.current_turn,
-        "game": game.get_state(),
+        "current_turn": (
+            game.state.current_turn
+            if game.state is not None
+            else None
+        ),
+        "required_starting_tile": (
+            game.first_round_required_tile.to_dict()
+            if getattr(
+                game,
+                "first_round_required_tile",
+                None,
+            )
+            else None
+        ),
     }
 
 
@@ -226,13 +305,13 @@ def play_tile(
             detail="Game not found.",
         )
 
-    result = game.play_tile(
+    success = game.play_tile(
         user_id=data.user_id,
         tile_index=data.tile_index,
         side=data.side,
     )
 
-    if not result:
+    if not success:
         raise HTTPException(
             status_code=400,
             detail="Invalid domino move.",
@@ -282,7 +361,7 @@ def draw_tile(
 
 
 # =========================================================
-# پاس دادن
+# پاس
 # =========================================================
 
 @router.post("/rooms/{room_id}/pass/{user_id}")
@@ -299,9 +378,9 @@ def pass_turn(
             detail="Game not found.",
         )
 
-    result = game.pass_turn(user_id)
+    success = game.pass_turn(user_id)
 
-    if not result:
+    if not success:
         raise HTTPException(
             status_code=400,
             detail="Cannot pass.",
@@ -316,7 +395,7 @@ def pass_turn(
 
 
 # =========================================================
-# دریافت دست بازیکن
+# دست بازیکن
 # =========================================================
 
 @router.get("/rooms/{room_id}/hand/{user_id}")
@@ -350,7 +429,7 @@ def get_player_hand(
 
 
 # =========================================================
-# دریافت مهره‌های قابل بازی
+# مهره‌های قابل بازی
 # =========================================================
 
 @router.get("/rooms/{room_id}/playable/{user_id}")
@@ -377,18 +456,18 @@ def get_playable_tiles(
 
     playable = game.get_playable_tiles(user_id)
 
-    indexes = []
+    playable_indexes = []
 
     for index, tile in enumerate(player.hand):
 
         if tile in playable:
-            indexes.append(index)
+            playable_indexes.append(index)
 
     return {
         "success": True,
         "room_id": room_id,
         "user_id": user_id,
-        "playable_indexes": indexes,
+        "playable_indexes": playable_indexes,
         "playable_tiles": [
             tile.to_dict()
             for tile in playable
