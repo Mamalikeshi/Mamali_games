@@ -1,19 +1,37 @@
+"""
+Domino API - 2 Player
+
+Handles:
+- Room creation
+- Joining
+- Ready
+- Starting game
+- Playing tiles
+- Drawing tiles
+- Passing
+- Starting next round
+- Game state
+- Player hand
+- Playable tiles
+- Scores
+"""
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from games.domino.game import DominoGame
 from games.domino.player import Player
 from games.domino.room import Room
-from games.domino.game import DominoGame
 
 
 router = APIRouter(
     prefix="/api/domino",
-    tags=["Domino"],
+    tags=["domino"],
 )
 
 
 # =========================================================
-# حافظه موقت
+# In-memory storage
 # =========================================================
 
 rooms: dict[str, Room] = {}
@@ -21,7 +39,7 @@ games: dict[str, DominoGame] = {}
 
 
 # =========================================================
-# Request Models
+# Request models
 # =========================================================
 
 class CreateRoomRequest(BaseModel):
@@ -41,31 +59,63 @@ class PlayTileRequest(BaseModel):
 
 
 # =========================================================
-# ساخت شناسه اتاق
+# Helpers
 # =========================================================
 
 def _next_room_id() -> str:
+
     number = 1
 
-    while f"domino-{number}" in rooms:
+    while True:
+
+        room_id = f"domino-{number}"
+
+        if room_id not in rooms:
+            return room_id
+
         number += 1
 
-    return f"domino-{number}"
 
+def _get_room(room_id: str) -> Room:
 
-# =========================================================
-# شروع واقعی بازی
-# =========================================================
+    room = rooms.get(room_id)
 
-def _start_domino_game(room: Room) -> DominoGame:
-
-    if len(room.players) != 2:
+    if room is None:
         raise HTTPException(
-            status_code=400,
-            detail="Exactly 2 players are required.",
+            status_code=404,
+            detail="Room not found.",
         )
 
-    existing_game = games.get(room.room_id)
+    return room
+
+
+def _get_game(room_id: str) -> DominoGame:
+
+    game = games.get(room_id)
+
+    if game is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Game not started.",
+        )
+
+    return game
+
+
+def _start_domino_game(
+    room: Room,
+) -> DominoGame:
+
+    if len(room.players) != 2:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Domino requires exactly 2 players.",
+        )
+
+    existing_game = games.get(
+        room.room_id
+    )
 
     if existing_game is not None:
         return existing_game
@@ -75,12 +125,12 @@ def _start_domino_game(room: Room) -> DominoGame:
     started = game.start_game()
 
     if not started:
+
         raise HTTPException(
             status_code=400,
-            detail="Could not start Domino game.",
+            detail="Unable to start domino game.",
         )
 
-    # اتاق را هم به حالت شروع‌شده می‌بریم
     room.start()
 
     games[room.room_id] = game
@@ -88,466 +138,530 @@ def _start_domino_game(room: Room) -> DominoGame:
     return game
 
 
-# =========================================================
-# ساخت اتاق
-# =========================================================
+def _serialize_tile(tile):
 
-@router.post("/rooms")
-def create_room(data: CreateRoomRequest):
+    if tile is None:
+        return None
 
-    room_id = _next_room_id()
+    if hasattr(tile, "to_dict"):
+        return tile.to_dict()
 
-    room = Room(room_id=room_id)
+    if hasattr(tile, "left") and hasattr(tile, "right"):
 
-    player = Player(
-        user_id=data.user_id,
-        username=data.username,
-    )
-
-    if not room.add_player(player):
-        raise HTTPException(
-            status_code=400,
-            detail="Could not add player to room.",
-        )
-
-    rooms[room_id] = room
+        return {
+            "left": tile.left,
+            "right": tile.right,
+        }
 
     return {
-        "success": True,
-        "room_id": room_id,
-        "players": len(room.players),
-        "is_full": room.is_full(),
-        "is_started": room.is_started,
+        "left": tile.a,
+        "right": tile.b,
     }
 
 
 # =========================================================
-# ورود بازیکن دوم
+# Create room
+# =========================================================
+
+@router.post("/rooms")
+def create_room(
+    request: CreateRoomRequest,
+):
+
+    if request.user_id <= 0:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid user_id.",
+        )
+
+    room_id = _next_room_id()
+
+    room = Room(
+        room_id=room_id
+    )
+
+    player = Player(
+        user_id=request.user_id,
+        username=request.username,
+    )
+
+    room.add_player(player)
+
+    rooms[room_id] = room
+
+    return {
+        "room_id": room_id,
+        "player_id": request.user_id,
+        "message": "Room created.",
+    }
+
+
+# =========================================================
+# Get room
+# =========================================================
+
+@router.get("/rooms/{room_id}")
+def get_room(
+    room_id: str,
+):
+
+    room = _get_room(room_id)
+
+    players = []
+
+    for player in room.players:
+
+        players.append({
+            "user_id": player.user_id,
+            "username": player.username,
+            "is_ready": getattr(
+                player,
+                "is_ready",
+                False,
+            ),
+        })
+
+    return {
+        "room_id": room.room_id,
+        "players": players,
+        "player_count": len(
+            room.players
+        ),
+        "is_started": room.is_started,
+        "game_exists": (
+            room.room_id in games
+        ),
+    }
+
+
+# =========================================================
+# Join room
 # =========================================================
 
 @router.post("/rooms/{room_id}/join")
 def join_room(
     room_id: str,
-    data: JoinRoomRequest,
+    request: JoinRoomRequest,
 ):
 
-    room = rooms.get(room_id)
-
-    if room is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Room not found.",
-        )
+    room = _get_room(room_id)
 
     if room.is_started:
+
         raise HTTPException(
             status_code=400,
-            detail="Game has already started.",
+            detail="Game already started.",
+        )
+
+    existing = room.get_player(
+        request.user_id
+    )
+
+    if existing is not None:
+
+        return {
+            "room_id": room_id,
+            "player_id": request.user_id,
+            "message": "Player already in room.",
+        }
+
+    if len(room.players) >= 2:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Room is full.",
         )
 
     player = Player(
-        user_id=data.user_id,
-        username=data.username,
+        user_id=request.user_id,
+        username=request.username,
     )
 
-    if not room.add_player(player):
-        raise HTTPException(
-            status_code=400,
-            detail="Room is full or player already joined.",
-        )
+    room.add_player(player)
 
     return {
-        "success": True,
-        "room_id": room.room_id,
-        "players": len(room.players),
-        "is_full": room.is_full(),
-        "is_started": room.is_started,
+        "room_id": room_id,
+        "player_id": request.user_id,
+        "message": "Player joined.",
     }
 
 
 # =========================================================
-# آماده شدن بازیکن
+# Ready
 # =========================================================
 
-@router.post("/rooms/{room_id}/ready/{user_id}")
+@router.post(
+    "/rooms/{room_id}/ready/{user_id}"
+)
 def ready_player(
     room_id: str,
     user_id: int,
 ):
 
-    room = rooms.get(room_id)
+    room = _get_room(room_id)
 
-    if room is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Room not found.",
-        )
-
-    player = room.get_player(user_id)
+    player = room.get_player(
+        user_id
+    )
 
     if player is None:
+
         raise HTTPException(
             status_code=404,
-            detail="Player not found.",
+            detail="Player not found in room.",
         )
 
-    if room.is_started:
-        return {
-            "success": True,
-            "room_id": room.room_id,
-            "user_id": user_id,
-            "is_ready": player.is_ready,
-            "players_ready": sum(
-                1
-                for p in room.players
-                if p.is_ready
-            ),
-            "game_started": True,
-        }
+    if not hasattr(
+        player,
+        "is_ready",
+    ):
+
+        player.is_ready = False
 
     player.is_ready = True
 
     game_started = False
-    game = None
 
-    # وقتی هر دو آماده شدند،
-    # همان لحظه بازی واقعی ساخته می‌شود.
-    if room.both_ready():
+    if (
+        len(room.players) == 2
+        and room.both_ready()
+    ):
 
-        game = _start_domino_game(room)
+        _start_domino_game(room)
 
         game_started = True
 
     return {
-        "success": True,
-        "room_id": room.room_id,
+        "room_id": room_id,
         "user_id": user_id,
-        "is_ready": player.is_ready,
-        "players_ready": sum(
-            1
-            for p in room.players
-            if p.is_ready
-        ),
+        "is_ready": True,
         "game_started": game_started,
-        "current_turn": (
-            game.state.current_turn
-            if game is not None and game.state is not None
-            else None
-        ),
     }
 
 
 # =========================================================
-# شروع دستی بازی
+# Start game manually
 # =========================================================
 
-@router.post("/rooms/{room_id}/start")
-def start_game(room_id: str):
+@router.post(
+    "/rooms/{room_id}/start"
+)
+def start_game(
+    room_id: str,
+):
 
-    room = rooms.get(room_id)
+    room = _get_room(room_id)
 
-    if room is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Room not found.",
-        )
+    if room.room_id in games:
+
+        game = games[room.room_id]
+
+        return {
+            "room_id": room_id,
+            "started": True,
+            "state": game.get_state(),
+        }
 
     if len(room.players) != 2:
-        raise HTTPException(
-            status_code=400,
-            detail="Exactly 2 players are required.",
-        )
 
-    if not room.both_ready():
         raise HTTPException(
             status_code=400,
-            detail="Both players must be ready.",
+            detail="Domino requires exactly 2 players.",
         )
 
     game = _start_domino_game(room)
 
     return {
-        "success": True,
-        "room_id": room.room_id,
-        "game_started": True,
-        "current_turn": (
-            game.state.current_turn
-            if game.state is not None
-            else None
-        ),
-        "required_starting_tile": (
-            game.first_round_required_tile.to_dict()
-            if getattr(
-                game,
-                "first_round_required_tile",
-                None,
-            )
-            else None
-        ),
-    }
-
-
-# =========================================================
-# بازی کردن مهره
-# =========================================================
-
-@router.post("/rooms/{room_id}/play")
-def play_tile(
-    room_id: str,
-    data: PlayTileRequest,
-):
-
-    game = games.get(room_id)
-
-    if game is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Game not found.",
-        )
-
-    success = game.play_tile(
-        user_id=data.user_id,
-        tile_index=data.tile_index,
-        side=data.side,
-    )
-
-    if not success:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid domino move.",
-        )
-
-    return {
-        "success": True,
         "room_id": room_id,
-        "action": "play",
+        "started": True,
         "state": game.get_state(),
     }
 
 
 # =========================================================
-# خرید یک مهره
+# Get game
 # =========================================================
 
-@router.post("/rooms/{room_id}/draw/{user_id}")
-def draw_tile(
+@router.get(
+    "/rooms/{room_id}/game"
+)
+def get_game(
     room_id: str,
-    user_id: int,
 ):
 
-    game = games.get(room_id)
-
-    if game is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Game not found.",
-        )
-
-    tile = game.draw_tile(user_id)
-
-    if tile is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot draw a tile.",
-        )
+    game = _get_game(room_id)
 
     return {
-        "success": True,
-        "room_id": room_id,
-        "action": "draw",
-        "tile": tile.to_dict(),
-        "state": game.get_state(),
-    }
-
-
-# =========================================================
-# پاس
-# =========================================================
-
-@router.post("/rooms/{room_id}/pass/{user_id}")
-def pass_turn(
-    room_id: str,
-    user_id: int,
-):
-
-    game = games.get(room_id)
-
-    if game is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Game not found.",
-        )
-
-    success = game.pass_turn(user_id)
-
-    if not success:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot pass.",
-        )
-
-    return {
-        "success": True,
-        "room_id": room_id,
-        "action": "pass",
-        "state": game.get_state(),
-    }
-
-
-# =========================================================
-# دست بازیکن
-# =========================================================
-
-@router.get("/rooms/{room_id}/hand/{user_id}")
-def get_player_hand(
-    room_id: str,
-    user_id: int,
-):
-
-    game = games.get(room_id)
-
-    if game is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Game not found.",
-        )
-
-    player = game.get_player(user_id)
-
-    if player is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Player not found.",
-        )
-
-    return {
-        "success": True,
-        "room_id": room_id,
-        "user_id": user_id,
-        "hand": player.hand_to_dict(),
-    }
-
-
-# =========================================================
-# مهره‌های قابل بازی
-# =========================================================
-
-@router.get("/rooms/{room_id}/playable/{user_id}")
-def get_playable_tiles(
-    room_id: str,
-    user_id: int,
-):
-
-    game = games.get(room_id)
-
-    if game is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Game not found.",
-        )
-
-    player = game.get_player(user_id)
-
-    if player is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Player not found.",
-        )
-
-    playable = game.get_playable_tiles(user_id)
-
-    playable_indexes = []
-
-    for index, tile in enumerate(player.hand):
-
-        if tile in playable:
-            playable_indexes.append(index)
-
-    return {
-        "success": True,
-        "room_id": room_id,
-        "user_id": user_id,
-        "playable_indexes": playable_indexes,
-        "playable_tiles": [
-            tile.to_dict()
-            for tile in playable
-        ],
-    }
-
-
-# =========================================================
-# وضعیت کامل بازی
-# =========================================================
-
-@router.get("/rooms/{room_id}/game")
-def get_game_state(room_id: str):
-
-    game = games.get(room_id)
-
-    if game is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Game not found.",
-        )
-
-    return {
-        "success": True,
         "room_id": room_id,
         "game": game.get_state(),
     }
 
 
 # =========================================================
-# امتیاز
+# Play tile
 # =========================================================
 
-@router.get("/rooms/{room_id}/score")
-def get_score(room_id: str):
+@router.post(
+    "/rooms/{room_id}/play"
+)
+def play_tile(
+    room_id: str,
+    request: PlayTileRequest,
+):
 
-    game = games.get(room_id)
+    game = _get_game(room_id)
 
-    if game is None:
+    success = game.play_tile(
+        user_id=request.user_id,
+        tile_index=request.tile_index,
+        side=request.side,
+    )
+
+    if not success:
+
         raise HTTPException(
-            status_code=404,
-            detail="Game not found.",
+            status_code=400,
+            detail=(
+                "Unable to play tile. "
+                "Check turn, tile and side."
+            ),
         )
 
     return {
         "success": True,
-        "room_id": room_id,
-        "scores": game.get_scores(),
-        "winner": game.get_winner(),
-        "game_finished": game.is_finished(),
+        "game": game.get_state(),
     }
 
 
 # =========================================================
-# اطلاعات اتاق
+# Draw tile
 # =========================================================
 
-@router.get("/rooms/{room_id}")
-def get_room(room_id: str):
+@router.post(
+    "/rooms/{room_id}/draw/{user_id}"
+)
+def draw_tile(
+    room_id: str,
+    user_id: int,
+):
 
-    room = rooms.get(room_id)
+    game = _get_game(room_id)
 
-    if room is None:
+    tile = game.draw_tile(
+        user_id
+    )
+
+    if tile is None:
+
         raise HTTPException(
-            status_code=404,
-            detail="Room not found.",
+            status_code=400,
+            detail=(
+                "Cannot draw a tile. "
+                "You may have a playable tile, "
+                "it may not be your turn, "
+                "or the boneyard may be empty."
+            ),
         )
 
     return {
         "success": True,
-        "room_id": room.room_id,
-        "players": [
-            {
-                "user_id": player.user_id,
-                "username": player.username,
-                "is_ready": player.is_ready,
-            }
-            for player in room.players
+        "tile": _serialize_tile(tile),
+        "game": game.get_state(),
+    }
+
+
+# =========================================================
+# Pass
+# =========================================================
+
+@router.post(
+    "/rooms/{room_id}/pass/{user_id}"
+)
+def pass_turn(
+    room_id: str,
+    user_id: int,
+):
+
+    game = _get_game(room_id)
+
+    success = game.pass_turn(
+        user_id
+    )
+
+    if not success:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Cannot pass. "
+                "You may have a playable tile, "
+                "the boneyard may not be empty, "
+                "or it may not be your turn."
+            ),
+        )
+
+    return {
+        "success": True,
+        "game": game.get_state(),
+    }
+
+
+# =========================================================
+# Start next round
+# =========================================================
+
+@router.post(
+    "/rooms/{room_id}/next-round"
+)
+def start_next_round(
+    room_id: str,
+):
+
+    game = _get_game(room_id)
+
+    if game.match_finished:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Match is already finished.",
+        )
+
+    if not game.round_finished:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Current round is not finished.",
+        )
+
+    started = game.start_next_round()
+
+    if not started:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to start next round.",
+        )
+
+    return {
+        "success": True,
+        "round_number":
+            game.round_number,
+        "game":
+            game.get_state(),
+    }
+
+
+# =========================================================
+# Player hand
+# =========================================================
+
+@router.get(
+    "/rooms/{room_id}/hand/{user_id}"
+)
+def get_player_hand(
+    room_id: str,
+    user_id: int,
+):
+
+    game = _get_game(room_id)
+
+    player = game.get_player(
+        user_id
+    )
+
+    if player is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Player not found.",
+        )
+
+    return {
+        "user_id": user_id,
+        "hand": [
+            _serialize_tile(tile)
+            for tile in player.hand
         ],
-        "is_full": room.is_full(),
-        "is_started": room.is_started,
-        "game_exists": room_id in games,
+    }
+
+
+# =========================================================
+# Playable tiles
+# =========================================================
+
+@router.get(
+    "/rooms/{room_id}/playable/{user_id}"
+)
+def get_playable_tiles(
+    room_id: str,
+    user_id: int,
+):
+
+    game = _get_game(room_id)
+
+    player = game.get_player(
+        user_id
+    )
+
+    if player is None:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Player not found.",
+        )
+
+    playable = game.get_playable_tiles(
+        user_id
+    )
+
+    indexes = []
+
+    for index, tile in enumerate(
+        player.hand
+    ):
+
+        if game.can_play_tile(tile):
+
+            indexes.append(index)
+
+    return {
+        "user_id": user_id,
+        "playable_indexes": indexes,
+        "tiles": [
+            _serialize_tile(tile)
+            for tile in playable
+        ],
+    }
+
+
+# =========================================================
+# Score
+# =========================================================
+
+@router.get(
+    "/rooms/{room_id}/score"
+)
+def get_score(
+    room_id: str,
+):
+
+    game = _get_game(room_id)
+
+    return {
+        "room_id": room_id,
+        "scores": game.get_scores(),
+        "target": game.get_state()[
+            "match_target_score"
+        ],
+        "round_number":
+            game.round_number,
+        "round_finished":
+            game.round_finished,
+        "round_winner":
+            game.round_winner,
+        "match_finished":
+            game.match_finished,
+        "match_winner":
+            game.match_winner,
     }
