@@ -1,483 +1,2479 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>دومینو</title>
+<title>دومینو - Mamali Games</title>
+
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
 <style>
-  body{
-    margin:0;
-    background:#151515;
-    color:white;
-    font-family:tahoma;
-    text-align:center;
-    padding-bottom:30px;
-  }
-  h1{ margin-top:20px; font-size:22px; }
-  .box{
-    max-width:420px;
-    margin:15px auto;
-    padding:15px;
-  }
-  .button{
-    width:250px;
-    margin:10px auto;
-    padding:14px;
-    background:#2f80ed;
-    border-radius:12px;
-    cursor:pointer;
-    font-size:18px;
-    border:none;
-    color:white;
-    display:block;
-  }
-  .button:disabled{
-    background:#444;
-  }
-  .back{
-    background:#333;
-    width:150px;
-    font-size:15px;
-    padding:10px;
-  }
-  input{
-    width:220px;
-    padding:12px;
-    border-radius:10px;
-    border:none;
-    font-size:16px;
-    text-align:center;
-    margin:8px auto;
-  }
-  .status{
-    color:#9be08b;
-    margin:10px;
-    font-size:14px;
-  }
-  .board{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:4px;
-    margin:15px auto;
-    min-height:60px;
-    max-width:400px;
-  }
-  .hand{
-    display:flex;
-    justify-content:center;
-    flex-wrap:wrap;
-    gap:6px;
-    margin:15px auto;
-  }
-  .tile{
-    display:flex;
-    background:#f2f2f2;
-    border-radius:6px;
-    border:2px solid #333;
-    overflow:hidden;
-  }
-  .tile.horizontal{
-    width:56px;
-    height:28px;
-    flex-direction:row;
-  }
-  .tile.vertical{
-    width:28px;
-    height:56px;
-    flex-direction:column;
-  }
-  .tile-half{
-    flex:1;
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    grid-template-rows:repeat(3,1fr);
-    padding:2px;
-    box-sizing:border-box;
-    position:relative;
-  }
-  .tile.horizontal .tile-half:first-child{
-    border-left:1.5px solid #333;
-  }
-  .tile.vertical .tile-half:first-child{
-    border-top:1.5px solid #333;
-  }
-  .pip{
-    width:5px;
-    height:5px;
-    border-radius:50%;
-    margin:auto;
-  }
-  .hand .tile{
-    width:56px;
-    height:96px;
-    flex-direction:column;
-    cursor:default;
-  }
-  .hand .tile .tile-half{
-    grid-template-columns:repeat(3,1fr);
-    grid-template-rows:repeat(3,1fr);
-    padding:4px;
-  }
-  .hand .tile .pip{
-    width:8px;
-    height:8px;
-  }
-  .hand .tile.playable{
-    border-color:#2f80ed;
-    box-shadow:0 0 6px #2f80ed;
-    cursor:pointer;
-  }
-  .hand .tile.forced{
-    border-color:#f2c94c;
-    box-shadow:0 0 8px #f2c94c;
-  }
-  .side-picker{
-    display:none;
-    gap:10px;
-    justify-content:center;
-    margin:10px;
-  }
-  .side-btn{
-    padding:10px 16px;
-    background:#2f80ed;
-    border:none;
-    border-radius:8px;
-    color:white;
-    font-size:15px;
-  }
-  .scoreboard{
-    margin:10px;
-    font-size:16px;
-  }
-  .hidden{ display:none; }
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 0 0 35px;
+        background: #111827;
+        color: #ffffff;
+        font-family: Tahoma, Arial, sans-serif;
+        text-align: center;
+    }
+
+    h1 {
+        font-size: 23px;
+        margin: 18px 0 8px;
+    }
+
+    h2 {
+        font-size: 19px;
+        margin: 8px 0 15px;
+    }
+
+    p {
+        margin: 8px 0;
+    }
+
+    .screen {
+        width: 100%;
+        max-width: 520px;
+        margin: 0 auto;
+        padding: 12px;
+    }
+
+    .card {
+        background: #1f2937;
+        border-radius: 18px;
+        padding: 18px;
+        margin: 14px 0;
+        box-shadow: 0 5px 20px rgba(0,0,0,.25);
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    .button {
+        width: 100%;
+        max-width: 330px;
+        border: none;
+        border-radius: 13px;
+        padding: 14px 18px;
+        margin: 8px auto;
+        display: block;
+        font-size: 17px;
+        font-family: inherit;
+        color: white;
+        background: #2563eb;
+        cursor: pointer;
+    }
+
+    .button:disabled {
+        opacity: .45;
+        cursor: not-allowed;
+    }
+
+    .button.green {
+        background: #16a34a;
+    }
+
+    .button.orange {
+        background: #d97706;
+    }
+
+    .button.red {
+        background: #dc2626;
+    }
+
+    .button.gray {
+        background: #4b5563;
+    }
+
+    input {
+        width: 100%;
+        max-width: 330px;
+        padding: 13px;
+        border: none;
+        border-radius: 12px;
+        margin: 7px auto;
+        font-family: inherit;
+        font-size: 16px;
+        text-align: center;
+        outline: none;
+    }
+
+    .status {
+        min-height: 25px;
+        margin: 10px 0;
+        color: #93c5fd;
+        font-size: 14px;
+    }
+
+    .error {
+        color: #fca5a5;
+    }
+
+    .success {
+        color: #86efac;
+    }
+
+    .room-code {
+        background: #111827;
+        border-radius: 12px;
+        padding: 13px;
+        font-size: 19px;
+        margin: 12px 0;
+        direction: ltr;
+    }
+
+    .players {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .player-box {
+        background: #374151;
+        border-radius: 12px;
+        padding: 12px 7px;
+        min-height: 80px;
+    }
+
+    .player-name {
+        font-size: 15px;
+        font-weight: bold;
+        word-break: break-word;
+    }
+
+    .ready {
+        color: #86efac;
+        margin-top: 8px;
+        font-size: 13px;
+    }
+
+    .not-ready {
+        color: #fbbf24;
+        margin-top: 8px;
+        font-size: 13px;
+    }
+
+    .turn-box {
+        background: #064e3b;
+        border-radius: 13px;
+        padding: 12px;
+        margin: 10px 0;
+        font-size: 16px;
+    }
+
+    .turn-box.wait {
+        background: #374151;
+    }
+
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 10px 0;
+    }
+
+    .info-item {
+        flex: 1;
+        background: #374151;
+        border-radius: 11px;
+        padding: 10px 5px;
+        font-size: 13px;
+    }
+
+    /* =========================
+       Board
+       ========================= */
+
+    .board-wrapper {
+        background: #14532d;
+        border-radius: 18px;
+        padding: 15px 8px;
+        margin: 12px 0;
+        min-height: 145px;
+        overflow-x: auto;
+        direction: ltr;
+    }
+
+    .board {
+        min-height: 110px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: nowrap;
+        width: max-content;
+        min-width: 100%;
+        margin: auto;
+    }
+
+    .empty-board {
+        color: #bbf7d0;
+        font-size: 14px;
+    }
+
+    /* =========================
+       Domino tile
+       ========================= */
+
+    .tile {
+        background: #f8fafc;
+        border: 2px solid #111827;
+        border-radius: 7px;
+        overflow: hidden;
+        flex-shrink: 0;
+        color: #111827;
+        box-shadow: 0 2px 5px rgba(0,0,0,.35);
+    }
+
+    .tile.board-tile {
+        width: 64px;
+        height: 34px;
+        display: flex;
+        flex-direction: row;
+    }
+
+    .tile.board-tile.vertical {
+        width: 34px;
+        height: 64px;
+        flex-direction: column;
+    }
+
+    .tile-half {
+        flex: 1;
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(3, 1fr);
+        padding: 3px;
+    }
+
+    .tile.board-tile .tile-half + .tile-half {
+        border-right: 1px solid #555;
+    }
+
+    .tile.board-tile.vertical .tile-half + .tile-half {
+        border-right: none;
+        border-top: 1px solid #555;
+    }
+
+    .pip {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin: auto;
+    }
+
+    /* =========================
+       Hand
+       ========================= */
+
+    .hand {
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 15px auto;
+    }
+
+    .hand .tile {
+        width: 58px;
+        height: 102px;
+        display: flex;
+        flex-direction: column;
+        cursor: pointer;
+        transition: transform .15s, border-color .15s;
+    }
+
+    .hand .tile:hover {
+        transform: translateY(-3px);
+    }
+
+    .hand .tile.selected {
+        transform: translateY(-9px);
+        border-color: #facc15;
+        box-shadow: 0 0 12px rgba(250,204,21,.65);
+    }
+
+    .hand .tile.playable {
+        border-color: #22c55e;
+        box-shadow: 0 0 8px rgba(34,197,94,.5);
+    }
+
+    .hand .tile.not-playable {
+        opacity: .58;
+    }
+
+    .hand .tile-half {
+        padding: 5px;
+    }
+
+    .hand .pip {
+        width: 8px;
+        height: 8px;
+    }
+
+    .tile-label {
+        font-size: 10px;
+        color: #374151;
+        text-align: center;
+        margin-top: -2px;
+    }
+
+    /* =========================
+       Side picker
+       ========================= */
+
+    .side-picker {
+        background: #374151;
+        border-radius: 14px;
+        padding: 12px;
+        margin: 12px 0;
+    }
+
+    .side-picker-title {
+        margin-bottom: 8px;
+        color: #fde68a;
+        font-size: 14px;
+    }
+
+    .side-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .side-button {
+        flex: 1;
+        border: none;
+        border-radius: 11px;
+        padding: 12px;
+        color: white;
+        background: #2563eb;
+        font-family: inherit;
+        font-size: 15px;
+        cursor: pointer;
+    }
+
+    /* =========================
+       Finish
+       ========================= */
+
+    .winner-box {
+        background: #064e3b;
+        border-radius: 15px;
+        padding: 18px;
+        margin: 15px 0;
+    }
+
+    .draw-box {
+        background: #78350f;
+    }
+
+    .footer-button {
+        margin-top: 20px;
+    }
+
+    @media (max-width: 390px) {
+        .hand {
+            gap: 5px;
+        }
+
+        .hand .tile {
+            width: 51px;
+            height: 92px;
+        }
+
+        .hand .pip {
+            width: 7px;
+            height: 7px;
+        }
+
+        .tile.board-tile {
+            width: 57px;
+            height: 31px;
+        }
+    }
 </style>
 </head>
+
 <body>
 
-<h1>🁫 دومینو (دونفره)</h1>
+<div class="screen">
 
-<div id="screen-menu" class="box">
-  <button class="button" onclick="createRoom()">ساخت اتاق جدید</button>
-  <div>
-    <input id="join-room-id" placeholder="کد اتاق را وارد کن">
-    <br>
-    <button class="button" onclick="joinRoom()">پیوستن به اتاق</button>
-  </div>
-  <div id="menu-status" class="status"></div>
+    <h1>🁫 دومینو</h1>
+    <p style="color:#9ca3af;font-size:13px;">بازی دومینو دو نفره</p>
+
+    <!-- =========================
+         MENU
+         ========================= -->
+
+    <div id="screen-menu" class="card">
+
+        <h2>شروع بازی</h2>
+
+        <button class="button green" onclick="createRoom()">
+            ساخت اتاق جدید
+        </button>
+
+        <div style="margin:18px 0 8px;color:#9ca3af;">
+            یا
+        </div>
+
+        <input
+            id="join-room-id"
+            type="text"
+            placeholder="کد اتاق"
+            autocomplete="off"
+        >
+
+        <button class="button" onclick="joinRoom()">
+            ورود به اتاق
+        </button>
+
+        <div id="menu-status" class="status"></div>
+
+    </div>
+
+
+    <!-- =========================
+         WAITING
+         ========================= -->
+
+    <div id="screen-waiting" class="card hidden">
+
+        <h2>⏳ انتظار برای بازیکن دوم</h2>
+
+        <p>کد اتاق:</p>
+
+        <div class="room-code" id="waiting-room-id">
+            -
+        </div>
+
+        <div id="waiting-status" class="status">
+            در انتظار بازیکن دوم...
+        </div>
+
+        <div class="players">
+
+            <div class="player-box">
+                <div class="player-name" id="player1-name">
+                    بازیکن ۱
+                </div>
+
+                <div id="player1-ready" class="ready">
+                    آماده
+                </div>
+            </div>
+
+            <div class="player-box">
+                <div class="player-name" id="player2-name">
+                    در انتظار...
+                </div>
+
+                <div id="player2-ready" class="not-ready">
+                    در انتظار
+                </div>
+            </div>
+
+        </div>
+
+        <button
+            id="ready-btn"
+            class="button green"
+            onclick="setReady()"
+        >
+            ✅ آماده‌ام
+        </button>
+
+        <div id="ready-status" class="status"></div>
+
+    </div>
+
+
+    <!-- =========================
+         GAME
+         ========================= -->
+
+    <div id="screen-game" class="hidden">
+
+        <div class="card">
+
+            <h2>🁫 بازی دومینو</h2>
+
+            <div id="turn-box" class="turn-box">
+                در حال دریافت وضعیت...
+            </div>
+
+            <div class="info-row">
+
+                <div class="info-item">
+                    <div>🪨 مهره‌های باقی‌مانده</div>
+                    <b id="boneyard-count">0</b>
+                </div>
+
+                <div class="info-item">
+                    <div>👤 حریف</div>
+                    <b id="opponent-count">0</b>
+                    <div>مهره</div>
+                </div>
+
+                <div class="info-item">
+                    <div>🖐 دست شما</div>
+                    <b id="my-count">0</b>
+                    <div>مهره</div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- BOARD -->
+
+        <div class="card">
+
+            <p>زمین بازی</p>
+
+            <div class="board-wrapper">
+                <div id="board-tiles" class="board">
+                    <div class="empty-board">
+                        هنوز مهره‌ای روی زمین نیست
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ACTIONS -->
+
+        <div class="card">
+
+            <div id="action-status" class="status"></div>
+
+            <div
+                id="side-picker"
+                class="side-picker hidden"
+            >
+
+                <div class="side-picker-title">
+                    این مهره را از کدام سمت بازی می‌کنی؟
+                </div>
+
+                <div class="side-buttons">
+
+                    <button
+                        class="side-button"
+                        onclick="confirmPlay('right')"
+                    >
+                        ➡️ سمت راست
+                    </button>
+
+                    <button
+                        class="side-button"
+                        onclick="confirmPlay('left')"
+                    >
+                        ⬅️ سمت چپ
+                    </button>
+
+                </div>
+
+            </div>
+
+            <button
+                id="draw-btn"
+                class="button orange hidden"
+                onclick="drawTile()"
+            >
+                🪨 کشیدن مهره
+            </button>
+
+            <button
+                id="pass-btn"
+                class="button gray hidden"
+                onclick="passTurn()"
+            >
+                ⏭️ پاس
+            </button>
+
+        </div>
+
+
+        <!-- HAND -->
+
+        <div class="card">
+
+            <p>🖐 دست شما</p>
+
+            <div id="hand-tiles" class="hand"></div>
+
+        </div>
+
+
+        <!-- FINISH -->
+
+        <div
+            id="finish-box"
+            class="winner-box hidden"
+        >
+            <h2 id="finish-title"></h2>
+            <div id="finish-message"></div>
+
+            <button
+                class="button"
+                onclick="goBack()"
+            >
+                بازگشت به منو
+            </button>
+        </div>
+
+    </div>
+
+
+    <button
+        id="back-button"
+        class="button gray footer-button"
+        onclick="goBack()"
+    >
+        🔙 بازگشت
+    </button>
+
 </div>
 
-<div id="screen-waiting" class="box hidden">
-  <p>کد اتاق: <b id="waiting-room-id"></b></p>
-  <p id="waiting-status">در انتظار بازیکن دوم...</p>
-  <button class="button" id="ready-btn" onclick="setReady()">آماده‌ام</button>
-</div>
-
-<div id="screen-game" class="box hidden">
-  <div class="scoreboard" id="scoreboard"></div>
-  <p id="turn-status"></p>
-  <p id="boneyard-status"></p>
-  <p>زمین بازی:</p>
-  <div class="board" id="board-tiles"></div>
-
-  <div class="side-picker" id="side-picker">
-    <button class="side-btn" onclick="confirmPlay('left')">سمت چپ</button>
-    <button class="side-btn" onclick="confirmPlay('right')">سمت راست</button>
-  </div>
-
-  <button class="button" id="draw-btn" onclick="drawTile()" style="display:none;">
-    کشیدن از بیرون
-  </button>
-
-  <p>دست شما:</p>
-  <div class="hand" id="hand-tiles"></div>
-</div>
-
-<div class="box">
-  <button class="button back" onclick="goBack()">🔙 بازگشت به منو</button>
-</div>
 
 <script>
-let tg = window.Telegram.WebApp;
-tg.expand();
+"use strict";
 
-let user = tg.initDataUnsafe && tg.initDataUnsafe.user
-  ? tg.initDataUnsafe.user
-  : { id: Math.floor(Math.random() * 1000000), username: "guest" };
+/* =========================================================
+   Telegram
+   ========================================================= */
 
-let userId = user.id;
-let username = user.username || user.first_name || ("player" + userId);
-
-let currentRoomId = null;
-let pollTimer = null;
-let selectedTileIndex = null;
-let currentValidSides = [];
-
-const PIP_COLORS = {
-  0: null,
-  1: "#7ec8e3",
-  2: "#4caf50",
-  3: "#e53935",
-  4: "#757575",
-  5: "#1565c0",
-  6: "#fbc02d",
-};
-
-// موقعیت نقطه‌ها تو گرید ۳x۳ برای هر عدد (مثل دومینوی واقعی)
-const PIP_LAYOUTS = {
-  0: [],
-  1: [5],
-  2: [1, 9],
-  3: [1, 5, 9],
-  4: [1, 3, 7, 9],
-  5: [1, 3, 5, 7, 9],
-  6: [1, 3, 4, 6, 7, 9],
-};
-
-function goBack(){
-  window.location.href = "index.html";
-}
-
-function buildTileHalf(value){
-  const half = document.createElement("div");
-  half.className = "tile-half";
-  const positions = PIP_LAYOUTS[value] || [];
-  for (let cell = 1; cell <= 9; cell++){
-    const dot = document.createElement("div");
-    if (positions.includes(cell)){
-      dot.className = "pip";
-      dot.style.background = PIP_COLORS[value];
-    }
-    half.appendChild(dot);
-  }
-  return half;
-}
-
-function buildTileElement(tile, orientation){
-  const el = document.createElement("div");
-  el.className = "tile " + orientation;
-  el.appendChild(buildTileHalf(tile.left));
-  el.appendChild(buildTileHalf(tile.right));
-  return el;
-}
-
-async function apiPost(path, body){
-  const res = await fetch(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body || {}),
-  });
-  return res.json();
-}
-
-async function apiGet(path){
-  const res = await fetch(path);
-  return res.json();
-}
-
-async function createRoom(){
-  const data = await apiPost("/api/domino/rooms", {
-    user_id: userId,
-    username: username,
-  });
-  if (data.success){
-    currentRoomId = data.room_id;
-    showWaitingScreen();
-  } else {
-    document.getElementById("menu-status").innerText = "خطا در ساخت اتاق";
-  }
-}
-
-async function joinRoom(){
-  const roomId = document.getElementById("join-room-id").value.trim();
-  if (!roomId){
-    document.getElementById("menu-status").innerText = "کد اتاق را وارد کن";
-    return;
-  }
-  const data = await apiPost("/api/domino/rooms/" + roomId + "/join", {
-    user_id: userId,
-    username: username,
-  });
-  if (data.success){
-    currentRoomId = roomId;
-    showWaitingScreen();
-  } else {
-    document.getElementById("menu-status").innerText = "اتاق پیدا نشد یا پر است";
-  }
-}
-
-function showWaitingScreen(){
-  document.getElementById("screen-menu").classList.add("hidden");
-  document.getElementById("screen-waiting").classList.remove("hidden");
-  document.getElementById("waiting-room-id").innerText = currentRoomId;
-  startWaitingPoll();
-}
-
-async function setReady(){
-  document.getElementById("ready-btn").disabled = true;
-  await apiPost("/api/domino/rooms/" + currentRoomId + "/ready/" + userId, {});
-}
-
-function startWaitingPoll(){
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(async () => {
-    const data = await apiGet("/api/domino/rooms/" + currentRoomId);
-    if (data.is_started){
-      clearInterval(pollTimer);
-      showGameScreen();
-      return;
-    }
-    document.getElementById("waiting-status").innerText =
-      "بازیکنان: " + data.players.length + " / 2";
-  }, 2000);
-}
-
-function showGameScreen(){
-  document.getElementById("screen-waiting").classList.add("hidden");
-  document.getElementById("screen-game").classList.remove("hidden");
-  startGamePoll();
-}
-
-function startGamePoll(){
-  if (pollTimer) clearInterval(pollTimer);
-  refreshGame();
-  pollTimer = setInterval(refreshGame, 2000);
-}
-
-async function refreshGame(){
-  const gameData = await apiGet("/api/domino/rooms/" + currentRoomId + "/game");
-  if (!gameData.success) return;
-
-  const game = gameData.game;
-  const state = game.state;
-  const handData = await apiGet("/api/domino/rooms/" + currentRoomId + "/hand/" + userId);
-
-  renderScoreboard(game);
-  renderTurn(state, game);
-  renderBoard(state.board);
-  renderHand(handData.hand, state, game);
-  renderDrawButton(handData.hand, state, game);
-
-  if (game.match_finished){
-    clearInterval(pollTimer);
-    showFinalScore(game);
-  }
-}
-
-function renderScoreboard(game){
-  const scoreA = game.total_score[game.player_a.user_id] || 0;
-  const scoreB = game.total_score[game.player_b.user_id] || 0;
-  document.getElementById("scoreboard").innerText =
-    game.player_a.username + ": " + scoreA + " امتیاز  |  " +
-    game.player_b.username + ": " + scoreB + " امتیاز" +
-    "  (دست " + game.round_number + " از ۱۰۱)";
-  document.getElementById("boneyard-status").innerText =
-    "مهره‌های باقی‌مونده بیرون: " + game.boneyard_remaining;
-}
-
-function renderTurn(state, game){
-  if (game.match_finished){
-    document.getElementById("turn-status").innerText = "بازی تمام شد!";
-    return;
-  }
-  document.getElementById("turn-status").innerText =
-    state.current_turn === userId ? "نوبت شماست 🎯" : "منتظر حریف...";
-}
-
-function renderBoard(board){
-  const el = document.getElementById("board-tiles");
-  el.innerHTML = "";
-  board.forEach(tile => {
-    el.appendChild(buildTileElement(tile, "horizontal"));
-  });
-}
-
-function tileValidSides(tile, leftEnd, rightEnd){
-  if (leftEnd === null && rightEnd === null) return ["left"];
-  const sides = [];
-  if (tile.left === leftEnd || tile.right === leftEnd) sides.push("left");
-  if (tile.left === rightEnd || tile.right === rightEnd) sides.push("right");
-  return sides;
-}
-
-function renderHand(cards, state, game){
-  const el = document.getElementById("hand-tiles");
-  el.innerHTML = "";
-  const isMyTurn = state.current_turn === userId && !game.match_finished;
-  const forcedIndex = game.pending_forced_tile_index
-    ? game.pending_forced_tile_index[userId]
+const tg = window.Telegram
+    ? window.Telegram.WebApp
     : null;
 
-  cards.forEach((tile, index) => {
-    const sides = tileValidSides(tile, state.left_end, state.right_end);
-    const isPlayable = isMyTurn && sides.length > 0;
-    const isForced = forcedIndex !== null && forcedIndex === index;
-
-    const el2 = buildTileElement(tile, "vertical");
-    let cls = "tile vertical";
-    if (isPlayable) cls += " playable";
-    if (isForced) cls += " forced";
-    el2.className = cls;
-
-    if (isPlayable){
-      el2.onclick = () => selectTile(index, tile, sides);
+if (tg) {
+    try {
+        tg.ready();
+        tg.expand();
+    } catch (e) {
+        console.log(e);
     }
-    el.appendChild(el2);
-  });
 }
 
-function renderDrawButton(cards, state, game){
-  const btn = document.getElementById("draw-btn");
-  const isMyTurn = state.current_turn === userId && !game.match_finished;
-  const hasPlayable = cards.some(tile =>
-    tileValidSides(tile, state.left_end, state.right_end).length > 0
-  );
-  btn.style.display = (isMyTurn && !hasPlayable) ? "block" : "none";
+
+/* =========================================================
+   State
+   ========================================================= */
+
+let roomId = null;
+let userId = null;
+let username = null;
+
+let selectedTileIndex = null;
+
+let roomPollTimer = null;
+let gamePollTimer = null;
+
+let currentGame = null;
+
+
+/* =========================================================
+   User
+   ========================================================= */
+
+function initUser() {
+
+    if (
+        tg &&
+        tg.initDataUnsafe &&
+        tg.initDataUnsafe.user
+    ) {
+
+        const user = tg.initDataUnsafe.user;
+
+        userId = Number(user.id);
+
+        username =
+            user.first_name ||
+            user.username ||
+            ("Player_" + user.id);
+
+        return;
+    }
+
+    /*
+      حالت تست خارج از تلگرام
+    */
+
+    userId = Number(
+        localStorage.getItem("domino_test_user_id")
+    );
+
+    if (!userId) {
+
+        userId =
+            Math.floor(
+                Math.random() * 900000
+            ) + 100000;
+
+        localStorage.setItem(
+            "domino_test_user_id",
+            String(userId)
+        );
+    }
+
+    username =
+        localStorage.getItem(
+            "domino_test_username"
+        );
+
+    if (!username) {
+
+        username =
+            "بازیکن " +
+            String(userId).slice(-4);
+
+        localStorage.setItem(
+            "domino_test_username",
+            username
+        );
+    }
 }
 
-function selectTile(index, tile, sides){
-  selectedTileIndex = index;
-  currentValidSides = sides;
 
-  if (sides.length === 1){
-    confirmPlay(sides[0]);
-  } else {
-    document.getElementById("side-picker").style.display = "flex";
-  }
+/* =========================================================
+   API helpers
+   ========================================================= */
+
+async function apiGet(url) {
+
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {
+            "Accept": "application/json"
+        }
+    });
+
+    let data = null;
+
+    try {
+        data = await response.json();
+    } catch (e) {
+        throw new Error(
+            "پاسخ نامعتبر از سرور دریافت شد."
+        );
+    }
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.detail ||
+            "خطا در ارتباط با سرور."
+        );
+    }
+
+    return data;
 }
 
-async function confirmPlay(side){
-  document.getElementById("side-picker").style.display = "none";
-  if (selectedTileIndex === null) return;
 
-  await apiPost("/api/domino/rooms/" + currentRoomId + "/play", {
-    user_id: userId,
-    tile_index: selectedTileIndex,
-    side: side,
-  });
-  selectedTileIndex = null;
-  refreshGame();
+async function apiPost(
+    url,
+    body = null
+) {
+
+    const options = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+    };
+
+    if (body !== null) {
+        options.body = JSON.stringify(body);
+    }
+
+    const response =
+        await fetch(url, options);
+
+    let data = null;
+
+    try {
+        data = await response.json();
+    } catch (e) {
+        throw new Error(
+            "پاسخ نامعتبر از سرور دریافت شد."
+        );
+    }
+
+    if (!response.ok) {
+
+        throw new Error(
+            data.detail ||
+            "خطا در ارتباط با سرور."
+        );
+    }
+
+    return data;
 }
 
-async function drawTile(){
-  await apiPost("/api/domino/rooms/" + currentRoomId + "/draw/" + userId, {});
-  refreshGame();
+
+/* =========================================================
+   Screen helpers
+   ========================================================= */
+
+function showScreen(name) {
+
+    document
+        .getElementById("screen-menu")
+        .classList.add("hidden");
+
+    document
+        .getElementById("screen-waiting")
+        .classList.add("hidden");
+
+    document
+        .getElementById("screen-game")
+        .classList.add("hidden");
+
+    if (name === "menu") {
+
+        document
+            .getElementById("screen-menu")
+            .classList.remove("hidden");
+
+    }
+
+    if (name === "waiting") {
+
+        document
+            .getElementById("screen-waiting")
+            .classList.remove("hidden");
+
+    }
+
+    if (name === "game") {
+
+        document
+            .getElementById("screen-game")
+            .classList.remove("hidden");
+
+    }
 }
 
-async function showFinalScore(game){
-  const scoreA = game.total_score[game.player_a.user_id] || 0;
-  const scoreB = game.total_score[game.player_b.user_id] || 0;
-  let winnerText = "مساوی شد";
-  if (game.match_winner === game.player_a.user_id){
-    winnerText = "برنده: " + game.player_a.username;
-  } else if (game.match_winner === game.player_b.user_id){
-    winnerText = "برنده: " + game.player_b.username;
-  }
-  document.getElementById("turn-status").innerText =
-    "🏁 بازی تمام شد! " + winnerText +
-    " (امتیاز نهایی: " + scoreA + " - " + scoreB + ")";
+
+function setStatus(
+    elementId,
+    message,
+    type = ""
+) {
+
+    const el =
+        document.getElementById(elementId);
+
+    if (!el) {
+        return;
+    }
+
+    el.textContent = message;
+
+    el.className = "status";
+
+    if (type === "error") {
+        el.classList.add("error");
+    }
+
+    if (type === "success") {
+        el.classList.add("success");
+    }
 }
+
+
+/* =========================================================
+   Create room
+   ========================================================= */
+
+async function createRoom() {
+
+    initUser();
+
+    setStatus(
+        "menu-status",
+        "در حال ساخت اتاق..."
+    );
+
+    try {
+
+        const data =
+            await apiPost(
+                "/api/domino/rooms",
+                {
+                    user_id: userId,
+                    username: username
+                }
+            );
+
+        roomId = data.room_id;
+
+        openWaitingScreen();
+
+        startRoomPolling();
+
+    } catch (error) {
+
+        setStatus(
+            "menu-status",
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+/* =========================================================
+   Join room
+   ========================================================= */
+
+async function joinRoom() {
+
+    initUser();
+
+    const input =
+        document.getElementById(
+            "join-room-id"
+        );
+
+    const value =
+        input.value.trim();
+
+    if (!value) {
+
+        setStatus(
+            "menu-status",
+            "کد اتاق را وارد کن.",
+            "error"
+        );
+
+        return;
+    }
+
+    roomId = value;
+
+    setStatus(
+        "menu-status",
+        "در حال ورود به اتاق..."
+    );
+
+    try {
+
+        await apiPost(
+            `/api/domino/rooms/${encodeURIComponent(roomId)}/join`,
+            {
+                user_id: userId,
+                username: username
+            }
+        );
+
+        openWaitingScreen();
+
+        startRoomPolling();
+
+    } catch (error) {
+
+        setStatus(
+            "menu-status",
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+/* =========================================================
+   Waiting screen
+   ========================================================= */
+
+function openWaitingScreen() {
+
+    showScreen("waiting");
+
+    document
+        .getElementById("waiting-room-id")
+        .textContent = roomId;
+
+    document
+        .getElementById("ready-btn")
+        .disabled = false;
+
+    setStatus(
+        "waiting-status",
+        "در حال بررسی بازیکنان..."
+    );
+
+    refreshRoom();
+}
+
+
+async function refreshRoom() {
+
+    if (!roomId) {
+        return;
+    }
+
+    try {
+
+        const data =
+            await apiGet(
+                `/api/domino/rooms/${encodeURIComponent(roomId)}`
+            );
+
+        renderRoom(data);
+
+        if (
+            data.is_started &&
+            data.game_exists
+        ) {
+
+            stopRoomPolling();
+
+            openGameScreen();
+
+            startGamePolling();
+
+            return;
+        }
+
+        if (
+            data.players &&
+            data.players.length === 2
+        ) {
+
+            setStatus(
+                "waiting-status",
+                "هر دو بازیکن وارد شده‌اند. آماده شوید.",
+                "success"
+            );
+
+        } else {
+
+            setStatus(
+                "waiting-status",
+                "در انتظار بازیکن دوم..."
+            );
+        }
+
+    } catch (error) {
+
+        setStatus(
+            "waiting-status",
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+function renderRoom(data) {
+
+    const players =
+        data.players || [];
+
+    const p1 = players[0];
+    const p2 = players[1];
+
+    document
+        .getElementById("player1-name")
+        .textContent =
+        p1
+            ? p1.username
+            : "بازیکن ۱";
+
+    document
+        .getElementById("player2-name")
+        .textContent =
+        p2
+            ? p2.username
+            : "در انتظار...";
+
+    const p1Ready =
+        document.getElementById(
+            "player1-ready"
+        );
+
+    const p2Ready =
+        document.getElementById(
+            "player2-ready"
+        );
+
+    if (p1 && p1.is_ready) {
+
+        p1Ready.textContent =
+            "✅ آماده";
+
+        p1Ready.className =
+            "ready";
+
+    } else {
+
+        p1Ready.textContent =
+            "⏳ آماده نیست";
+
+        p1Ready.className =
+            "not-ready";
+    }
+
+    if (p2 && p2.is_ready) {
+
+        p2Ready.textContent =
+            "✅ آماده";
+
+        p2Ready.className =
+            "ready";
+
+    } else {
+
+        p2Ready.textContent =
+            "⏳ آماده نیست";
+
+        p2Ready.className =
+            "not-ready";
+    }
+
+    /*
+      دکمه آماده شدن فقط برای بازیکن فعلی
+      فعال می‌ماند.
+    */
+
+    const me =
+        players.find(
+            p =>
+                Number(p.user_id) ===
+                Number(userId)
+        );
+
+    if (me && me.is_ready) {
+
+        document
+            .getElementById("ready-btn")
+            .disabled = true;
+
+        document
+            .getElementById("ready-btn")
+            .textContent =
+            "✅ آماده شدی";
+
+    }
+}
+
+
+/* =========================================================
+   Ready
+   ========================================================= */
+
+async function setReady() {
+
+    if (!roomId || !userId) {
+        return;
+    }
+
+    const button =
+        document.getElementById(
+            "ready-btn"
+        );
+
+    button.disabled = true;
+
+    setStatus(
+        "ready-status",
+        "در حال ثبت آمادگی..."
+    );
+
+    try {
+
+        const data =
+            await apiPost(
+                `/api/domino/rooms/${encodeURIComponent(roomId)}/ready/${userId}`
+            );
+
+        if (data.game_started) {
+
+            stopRoomPolling();
+
+            openGameScreen();
+
+            startGamePolling();
+
+            return;
+        }
+
+        setStatus(
+            "ready-status",
+            "آمادگی شما ثبت شد.",
+            "success"
+        );
+
+        refreshRoom();
+
+    } catch (error) {
+
+        button.disabled = false;
+
+        setStatus(
+            "ready-status",
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+/* =========================================================
+   Room polling
+   ========================================================= */
+
+function startRoomPolling() {
+
+    stopRoomPolling();
+
+    roomPollTimer =
+        setInterval(
+            refreshRoom,
+            1500
+        );
+}
+
+
+function stopRoomPolling() {
+
+    if (roomPollTimer) {
+
+        clearInterval(
+            roomPollTimer
+        );
+
+        roomPollTimer = null;
+    }
+}
+
+
+/* =========================================================
+   Game screen
+   ========================================================= */
+
+function openGameScreen() {
+
+    showScreen("game");
+
+    document
+        .getElementById("back-button")
+        .classList.remove("hidden");
+
+    refreshGame();
+}
+
+
+/* =========================================================
+   Game polling
+   ========================================================= */
+
+function startGamePolling() {
+
+    stopGamePolling();
+
+    gamePollTimer =
+        setInterval(
+            refreshGame,
+            1200
+        );
+}
+
+
+function stopGamePolling() {
+
+    if (gamePollTimer) {
+
+        clearInterval(
+            gamePollTimer
+        );
+
+        gamePollTimer = null;
+    }
+}
+
+
+/* =========================================================
+   Refresh game
+   ========================================================= */
+
+async function refreshGame() {
+
+    if (!roomId) {
+        return;
+    }
+
+    try {
+
+        const data =
+            await apiGet(
+                `/api/domino/rooms/${encodeURIComponent(roomId)}/game`
+            );
+
+        if (!data.game) {
+            return;
+        }
+
+        currentGame = data.game;
+
+        renderGame(currentGame);
+
+        /*
+          گرفتن دست واقعی بازیکن
+        */
+
+        const handData =
+            await apiGet(
+                `/api/domino/rooms/${encodeURIComponent(roomId)}/hand/${userId}`
+            );
+
+        renderHand(
+            handData.hand || []
+        );
+
+        /*
+          مهره‌های قابل بازی
+        */
+
+        let playableIndexes = [];
+
+        try {
+
+            const playableData =
+                await apiGet(
+                    `/api/domino/rooms/${encodeURIComponent(roomId)}/playable/${userId}`
+                );
+
+            playableIndexes =
+                playableData.playable_indexes || [];
+
+        } catch (e) {
+
+            playableIndexes = [];
+        }
+
+        renderPlayableIndexes(
+            playableIndexes
+        );
+
+    } catch (error) {
+
+        /*
+          در شروع بازی ممکن است یک لحظه
+          هنوز endpoint آماده نباشد.
+        */
+
+        setStatus(
+            "action-status",
+            error.message,
+            "error"
+        );
+    }
+}
+
+
+/* =========================================================
+   Render game
+   ========================================================= */
+
+function renderGame(game) {
+
+    const state =
+        game.state || {};
+
+    const playerA =
+        game.player_a || {};
+
+    const playerB =
+        game.player_b || {};
+
+    const me =
+        Number(userId);
+
+    const myPlayer =
+        Number(playerA.user_id) === me
+            ? playerA
+            : playerB;
+
+    const opponent =
+        Number(playerA.user_id) === me
+            ? playerB
+            : playerA;
+
+    document
+        .getElementById("my-count")
+        .textContent =
+        myPlayer.hand_count || 0;
+
+    document
+        .getElementById("opponent-count")
+        .textContent =
+        opponent.hand_count || 0;
+
+    document
+        .getElementById("boneyard-count")
+        .textContent =
+        game.boneyard_remaining || 0;
+
+
+    /* Turn */
+
+    const turnBox =
+        document.getElementById(
+            "turn-box"
+        );
+
+    const currentTurn =
+        Number(state.current_turn);
+
+    if (game.match_finished) {
+
+        turnBox.textContent =
+            "🏁 بازی تمام شده است";
+
+        turnBox.className =
+            "turn-box wait";
+
+    } else if (
+        currentTurn === me
+    ) {
+
+        turnBox.textContent =
+            "🎯 نوبت شماست";
+
+        turnBox.className =
+            "turn-box";
+
+    } else {
+
+        turnBox.textContent =
+            "⏳ نوبت حریف است";
+
+        turnBox.className =
+            "turn-box wait";
+    }
+
+
+    /* Board */
+
+    renderBoard(
+        state.board || []
+    );
+
+
+    /* Finish */
+
+    if (game.match_finished) {
+
+        renderFinish(game);
+    }
+}
+
+
+/* =========================================================
+   Board
+   ========================================================= */
+
+function renderBoard(board) {
+
+    const container =
+        document.getElementById(
+            "board-tiles"
+        );
+
+    container.innerHTML = "";
+
+    if (!board.length) {
+
+        const empty =
+            document.createElement(
+                "div"
+            );
+
+        empty.className =
+            "empty-board";
+
+        empty.textContent =
+            "هنوز مهره‌ای روی زمین نیست";
+
+        container.appendChild(empty);
+
+        return;
+    }
+
+    board.forEach(
+        tile => {
+
+            const element =
+                createTileElement(
+                    tile,
+                    "board"
+                );
+
+            container.appendChild(
+                element
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   Hand
+   ========================================================= */
+
+function renderHand(hand) {
+
+    const container =
+        document.getElementById(
+            "hand-tiles"
+        );
+
+    container.innerHTML = "";
+
+    selectedTileIndex = null;
+
+    hand.forEach(
+        (tile, index) => {
+
+            const element =
+                createTileElement(
+                    tile,
+                    "hand"
+                );
+
+            element.dataset.index =
+                String(index);
+
+            element.onclick =
+                function() {
+
+                    selectTile(index);
+                };
+
+            container.appendChild(
+                element
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   Playable indexes
+   ========================================================= */
+
+function renderPlayableIndexes(
+    indexes
+) {
+
+    const container =
+        document.getElementById(
+            "hand-tiles"
+        );
+
+    const tiles =
+        container.children;
+
+    for (
+        let i = 0;
+        i < tiles.length;
+        i++
+    ) {
+
+        tiles[i]
+            .classList
+            .remove(
+                "playable",
+                "not-playable"
+            );
+
+        if (
+            indexes.includes(i)
+        ) {
+
+            tiles[i]
+                .classList
+                .add(
+                    "playable"
+                );
+
+        } else {
+
+            tiles[i]
+                .classList
+                .add(
+                    "not-playable"
+                );
+        }
+    }
+}
+
+
+/* =========================================================
+   Select tile
+   ========================================================= */
+
+function selectTile(index) {
+
+    if (!currentGame) {
+        return;
+    }
+
+    const state =
+        currentGame.state || {};
+
+    if (
+        Number(state.current_turn) !==
+        Number(userId)
+    ) {
+
+        setStatus(
+            "action-status",
+            "الان نوبت شما نیست.",
+            "error"
+        );
+
+        return;
+    }
+
+    const tileElements =
+        document
+            .getElementById(
+                "hand-tiles"
+            )
+            .children;
+
+    for (
+        let i = 0;
+        i < tileElements.length;
+        i++
+    ) {
+
+        tileElements[i]
+            .classList
+            .remove(
+                "selected"
+            );
+    }
+
+    selectedTileIndex = index;
+
+    if (tileElements[index]) {
+
+        tileElements[index]
+            .classList
+            .add(
+                "selected"
+            );
+    }
+
+    const board =
+        state.board || [];
+
+    /*
+      اگر زمین خالی است،
+      مستقیماً بازی می‌کنیم.
+    */
+
+    if (board.length === 0) {
+
+        confirmPlay(null);
+
+        return;
+    }
+
+    const tile =
+        getCurrentHandTile(index);
+
+    if (!tile) {
+        return;
+    }
+
+    const leftEnd =
+        state.left_end;
+
+    const rightEnd =
+        state.right_end;
+
+    const canLeft =
+        tile.left === leftEnd ||
+        tile.right === leftEnd;
+
+    const canRight =
+        tile.left === rightEnd ||
+        tile.right === rightEnd;
+
+    if (
+        canLeft &&
+        canRight
+    ) {
+
+        document
+            .getElementById(
+                "side-picker"
+            )
+            .classList
+            .remove("hidden");
+
+        setStatus(
+            "action-status",
+            "یکی از دو سمت را انتخاب کن."
+        );
+
+        return;
+    }
+
+    if (canLeft) {
+
+        confirmPlay("left");
+
+        return;
+    }
+
+    if (canRight) {
+
+        confirmPlay("right");
+
+        return;
+    }
+
+    setStatus(
+        "action-status",
+        "این مهره قابل بازی نیست.",
+        "error"
+    );
+}
+
+
+/* =========================================================
+   Current hand tile
+   ========================================================= */
+
+function getCurrentHandTile(index) {
+
+    const elements =
+        document
+            .getElementById(
+                "hand-tiles"
+            )
+            .children;
+
+    const element =
+        elements[index];
+
+    if (!element) {
+        return null;
+    }
+
+    return {
+        left: Number(
+            element.dataset.left
+        ),
+        right: Number(
+            element.dataset.right
+        )
+    };
+}
+
+
+/* =========================================================
+   Confirm play
+   ========================================================= */
+
+async function confirmPlay(side) {
+
+    if (
+        selectedTileIndex === null
+    ) {
+
+        setStatus(
+            "action-status",
+            "اول یک مهره انتخاب کن.",
+            "error"
+        );
+
+        return;
+    }
+
+    const state =
+        currentGame &&
+        currentGame.state
+            ? currentGame.state
+            : {};
+
+    if (
+        Number(state.current_turn) !==
+        Number(userId)
+    ) {
+
+        setStatus(
+            "action-status",
+            "الان نوبت شما نیست.",
+            "error"
+        );
+
+        return;
+    }
+
+    document
+        .getElementById(
+            "side-picker"
+        )
+        .classList
+        .add("hidden");
+
+    setStatus(
+        "action-status",
+        "در حال بازی کردن مهره..."
+    );
+
+    try {
+
+        await apiPost(
+            `/api/domino/rooms/${encodeURIComponent(roomId)}/play`,
+            {
+                user_id: userId,
+                tile_index:
+                    selectedTileIndex,
+                side: side
+            }
+        );
+
+        selectedTileIndex = null;
+
+        setStatus(
+            "action-status",
+            "مهره بازی شد.",
+            "success"
+        );
+
+        await refreshGame();
+
+    } catch (error) {
+
+        setStatus(
+            "action-status",
+            error.message,
+            "error"
+        );
+
+        refreshGame();
+    }
+}
+
+
+/* =========================================================
+   Draw tile
+   ========================================================= */
+
+async function drawTile() {
+
+    if (!currentGame) {
+        return;
+    }
+
+    const state =
+        currentGame.state || {};
+
+    if (
+        Number(state.current_turn) !==
+        Number(userId)
+    ) {
+
+        setStatus(
+            "action-status",
+            "الان نوبت شما نیست.",
+            "error"
+        );
+
+        return;
+    }
+
+    const button =
+        document.getElementById(
+            "draw-btn"
+        );
+
+    button.disabled = true;
+
+    setStatus(
+        "action-status",
+        "در حال کشیدن مهره..."
+    );
+
+    try {
+
+        const data =
+            await apiPost(
+                `/api/domino/rooms/${encodeURIComponent(roomId)}/draw/${userId}`
+            );
+
+        if (data.tile) {
+
+            setStatus(
+                "action-status",
+                `مهره ${data.tile.left}|${data.tile.right} را کشیدی.`
+            );
+        }
+
+        await refreshGame();
+
+    } catch (error) {
+
+        setStatus(
+            "action-status",
+            error.message,
+            "error"
+        );
+
+        await refreshGame();
+
+    } finally {
+
+        button.disabled = false;
+    }
+}
+
+
+/* =========================================================
+   Pass
+   ========================================================= */
+
+async function passTurn() {
+
+    if (!currentGame) {
+        return;
+    }
+
+    const state =
+        currentGame.state || {};
+
+    if (
+        Number(state.current_turn) !==
+        Number(userId)
+    ) {
+
+        setStatus(
+            "action-status",
+            "الان نوبت شما نیست.",
+            "error"
+        );
+
+        return;
+    }
+
+    try {
+
+        await apiPost(
+            `/api/domino/rooms/${encodeURIComponent(roomId)}/pass/${userId}`
+        );
+
+        setStatus(
+            "action-status",
+            "پاس انجام شد.",
+            "success"
+        );
+
+        await refreshGame();
+
+    } catch (error) {
+
+        setStatus(
+            "action-status",
+            error.message,
+            "error"
+        );
+
+        await refreshGame();
+    }
+}
+
+
+/* =========================================================
+   Action buttons
+   ========================================================= */
+
+function updateActionButtons(
+    hand,
+    playableIndexes
+) {
+
+    if (!currentGame) {
+        return;
+    }
+
+    const state =
+        currentGame.state || {};
+
+    const myTurn =
+        Number(state.current_turn) ===
+        Number(userId);
+
+    const boneyard =
+        Number(
+            currentGame.boneyard_remaining || 0
+        );
+
+    const drawButton =
+        document.getElementById(
+            "draw-btn"
+        );
+
+    const passButton =
+        document.getElementById(
+            "pass-btn"
+        );
+
+    if (!myTurn) {
+
+        drawButton.classList.add(
+            "hidden"
+        );
+
+        passButton.classList.add(
+            "hidden"
+        );
+
+        return;
+    }
+
+    if (
+        playableIndexes.length === 0 &&
+        boneyard > 0
+    ) {
+
+        drawButton.classList.remove(
+            "hidden"
+        );
+
+    } else {
+
+        drawButton.classList.add(
+            "hidden"
+        );
+    }
+
+    /*
+      Pass فقط وقتی مجاز است که:
+      - نوبت ما باشد
+      - مهره قابل بازی نداشته باشیم
+      - Boneyard خالی باشد
+    */
+
+    if (
+        playableIndexes.length === 0 &&
+        boneyard === 0
+    ) {
+
+        passButton.classList.remove(
+            "hidden"
+        );
+
+    } else {
+
+        passButton.classList.add(
+            "hidden"
+        );
+    }
+}
+
+
+/* =========================================================
+   Override refresh to update actions
+   ========================================================= */
+
+const originalRenderPlayableIndexes =
+    renderPlayableIndexes;
+
+renderPlayableIndexes =
+    function(indexes) {
+
+        originalRenderPlayableIndexes(
+            indexes
+        );
+
+        const elements =
+            document
+                .getElementById(
+                    "hand-tiles"
+                )
+                .children;
+
+        const hand = [];
+
+        for (
+            let i = 0;
+            i < elements.length;
+            i++
+        ) {
+
+            hand.push({
+                left:
+                    Number(
+                        elements[i]
+                            .dataset
+                            .left
+                    ),
+                right:
+                    Number(
+                        elements[i]
+                            .dataset
+                            .right
+                    )
+            });
+        }
+
+        updateActionButtons(
+            hand,
+            indexes
+        );
+    };
+
+
+/* =========================================================
+   Tile renderer
+   ========================================================= */
+
+function createTileElement(
+    tile,
+    type
+) {
+
+    const root =
+        document.createElement(
+            "div"
+        );
+
+    root.className =
+        "tile";
+
+    if (type === "board") {
+
+        root.classList.add(
+            "board-tile"
+        );
+    }
+
+    if (type === "hand") {
+
+        root.classList.add(
+            "hand-tile"
+        );
+    }
+
+    const left =
+        Number(tile.left);
+
+    const right =
+        Number(tile.right);
+
+    root.dataset.left =
+        String(left);
+
+    root.dataset.right =
+        String(right);
+
+    /*
+      Board doubles را عمودی نمایش می‌دهیم
+    */
+
+    if (
+        type === "board" &&
+        left === right
+    ) {
+
+        root.classList.add(
+            "vertical"
+        );
+    }
+
+    const firstHalf =
+        createTileHalf(left);
+
+    const secondHalf =
+        createTileHalf(right);
+
+    root.appendChild(
+        firstHalf
+    );
+
+    root.appendChild(
+        secondHalf
+    );
+
+    return root;
+}
+
+
+function createTileHalf(value) {
+
+    const half =
+        document.createElement(
+            "div"
+        );
+
+    half.className =
+        "tile-half";
+
+    const positions =
+        getPipPositions(value);
+
+    for (
+        let i = 0;
+        i < 9;
+        i++
+    ) {
+
+        const cell =
+            document.createElement(
+                "div"
+            );
+
+        if (
+            positions.includes(i)
+        ) {
+
+            const pip =
+                document.createElement(
+                    "div"
+                );
+
+            pip.className =
+                "pip";
+
+            pip.style.background =
+                getPipColor(value);
+
+            cell.appendChild(
+                pip
+            );
+        }
+
+        half.appendChild(
+            cell
+        );
+    }
+
+    return half;
+}
+
+
+function getPipPositions(value) {
+
+    const map = {
+
+        0: [],
+
+        1: [4],
+
+        2: [0, 8],
+
+        3: [0, 4, 8],
+
+        4: [0, 2, 6, 8],
+
+        5: [0, 2, 4, 6, 8],
+
+        6: [0, 2, 3, 5, 6, 8]
+    };
+
+    return map[value] || [];
+}
+
+
+function getPipColor(value) {
+
+    const colors = {
+
+        0: "transparent",
+
+        1: "#0284c7",
+
+        2: "#16a34a",
+
+        3: "#dc2626",
+
+        4: "#4b5563",
+
+        5: "#1d4ed8",
+
+        6: "#ca8a04"
+    };
+
+    return colors[value] || "#111827";
+}
+
+
+/* =========================================================
+   Finish
+   ========================================================= */
+
+function renderFinish(game) {
+
+    stopGamePolling();
+
+    const box =
+        document.getElementById(
+            "finish-box"
+        );
+
+    const title =
+        document.getElementById(
+            "finish-title"
+        );
+
+    const message =
+        document.getElementById(
+            "finish-message"
+        );
+
+    box.classList.remove(
+        "hidden"
+    );
+
+    const winner =
+        Number(game.match_winner);
+
+    if (
+        winner === Number(userId)
+    ) {
+
+        title.textContent =
+            "🏆 شما برنده شدید!";
+
+        message.textContent =
+            "تبریک! این دور را بردی.";
+
+        box.className =
+            "winner-box";
+
+        return;
+    }
+
+    if (
+        winner &&
+        winner !== Number(userId)
+    ) {
+
+        title.textContent =
+            "😔 حریف برنده شد";
+
+        message.textContent =
+            "این دور را به حریف واگذار کردی.";
+
+        box.className =
+            "winner-box draw-box";
+
+        return;
+    }
+
+    title.textContent =
+        "🤝 بازی مساوی شد";
+
+    message.textContent =
+        "هیچ‌کدام برنده نشدند.";
+
+    box.className =
+        "winner-box draw-box";
+}
+
+
+/* =========================================================
+   Back
+   ========================================================= */
+
+function goBack() {
+
+    stopRoomPolling();
+    stopGamePolling();
+
+    roomId = null;
+    selectedTileIndex = null;
+    currentGame = null;
+
+    document
+        .getElementById(
+            "join-room-id"
+        )
+        .value = "";
+
+    document
+        .getElementById(
+            "finish-box"
+        )
+        .classList
+        .add("hidden");
+
+    document
+        .getElementById(
+            "side-picker"
+        )
+        .classList
+        .add("hidden");
+
+    document
+        .getElementById(
+            "draw-btn"
+        )
+        .classList
+        .add("hidden");
+
+    document
+        .getElementById(
+            "pass-btn"
+        )
+        .classList
+        .add("hidden");
+
+    setStatus(
+        "menu-status",
+        ""
+    );
+
+    setStatus(
+        "waiting-status",
+        ""
+    );
+
+    setStatus(
+        "ready-status",
+        ""
+    );
+
+    setStatus(
+        "action-status",
+        ""
+    );
+
+    showScreen("menu");
+}
+
+
+/* =========================================================
+   Initial
+   ========================================================= */
+
+initUser();
+showScreen("menu");
+
 </script>
+
 </body>
 </html>
