@@ -1,22 +1,24 @@
 """
 Main game engine for Domino - 2 player mode.
-Standard Double-Six Domino.
 
-Rules:
-- 2 players only.
-- 28 tiles in the full set.
-- Each player receives 7 tiles.
-- Remaining tiles form the boneyard.
-- A tile can be played when one side matches
-  one of the two open ends of the board.
-- If the player has no legal move, they draw
-  from the boneyard until they can play or
-  the boneyard becomes empty.
-- If no legal move exists after the boneyard
-  is empty, the player passes.
-- A round ends when:
-    1. A player has no tiles left, or
-    2. Both players are blocked.
+Standard Double-Six Domino:
+- 28 tiles
+- 2 players
+- 7 tiles for each player
+- 14 tiles in boneyard
+- Match target: 101 points
+
+Round:
+- A player wins by emptying their hand.
+- If the game is blocked, the player with fewer pips wins.
+- Winner receives the opponent's remaining pips.
+- If the round is blocked, the winner receives the opponent's
+  remaining pip total.
+- If both players have the same pip total, the round gives 0 points.
+
+Match:
+- Scores accumulate between rounds.
+- A player reaching MATCH_TARGET_SCORE wins the match.
 """
 
 from games.domino.deck import Deck
@@ -24,18 +26,22 @@ from games.domino.player import Player
 from games.domino.room import Room
 from games.domino.state import DominoState
 from games.domino.tile import Tile
+from games.domino.rules import (
+    MATCH_TARGET_SCORE,
+    TILES_PER_PLAYER,
+)
 
 
 class DominoGame:
 
     def __init__(self, room: Room):
 
-        self.room = room
-
         if len(room.players) != 2:
             raise ValueError(
                 "Domino requires exactly 2 players."
             )
+
+        self.room = room
 
         self.player_a: Player = room.players[0]
         self.player_b: Player = room.players[1]
@@ -43,16 +49,24 @@ class DominoGame:
         self.deck: Deck | None = None
         self.state: DominoState | None = None
 
+        # Match
         self.match_finished: bool = False
         self.match_winner: int | None = None
 
+        # Round
         self.round_finished: bool = False
         self.round_winner: int | None = None
 
+        self.round_number: int = 0
+
         self.last_round_summary: dict | None = None
 
+        # امتیاز کل Match
+        self.player_a.score = 0
+        self.player_b.score = 0
+
     # =========================================================
-    # شروع بازی
+    # شروع Match
     # =========================================================
 
     def start_game(self) -> bool:
@@ -60,29 +74,61 @@ class DominoGame:
         if len(self.room.players) != 2:
             return False
 
+        self.match_finished = False
+        self.match_winner = None
+
+        self.round_number = 0
+
+        self.player_a.score = 0
+        self.player_b.score = 0
+
+        self.last_round_summary = None
+
+        return self._start_round()
+
+    # =========================================================
+    # شروع یک دست
+    # =========================================================
+
+    def _start_round(self) -> bool:
+
+        if self.match_finished:
+            return False
+
         self.deck = Deck()
         self.deck.shuffle()
 
         self.state = DominoState()
 
-        self.match_finished = False
-        self.match_winner = None
-
         self.round_finished = False
         self.round_winner = None
-
-        self.last_round_summary = None
 
         self.player_a.hand = []
         self.player_b.hand = []
 
         self._deal_initial_tiles()
 
+        self.round_number += 1
+
         starter = self._choose_starter()
 
         self.state.current_turn = starter
 
         return True
+
+    # =========================================================
+    # شروع دست بعدی
+    # =========================================================
+
+    def start_next_round(self) -> bool:
+
+        if self.match_finished:
+            return False
+
+        if not self.round_finished:
+            return False
+
+        return self._start_round()
 
     # =========================================================
     # پخش ۷ مهره برای هر بازیکن
@@ -94,17 +140,15 @@ class DominoGame:
             return
 
         self.player_a.add_to_hand(
-            self.deck.draw(7)
+            self.deck.draw(TILES_PER_PLAYER)
         )
 
         self.player_b.add_to_hand(
-            self.deck.draw(7)
+            self.deck.draw(TILES_PER_PLAYER)
         )
 
     # =========================================================
     # انتخاب شروع‌کننده
-    #
-    # بازیکنی که بزرگ‌ترین Double را دارد شروع می‌کند.
     # =========================================================
 
     def _choose_starter(self) -> int:
@@ -140,9 +184,6 @@ class DominoGame:
             if player_b_double > player_a_double:
                 return self.player_b.user_id
 
-        # اگر هیچ‌کدام Double نداشتند،
-        # بازیکنی که مجموع بزرگ‌تری دارد شروع می‌کند.
-
         player_a_total = sum(
             self._tile_value(tile)
             for tile in self.player_a.hand
@@ -159,11 +200,10 @@ class DominoGame:
         if player_b_total > player_a_total:
             return self.player_b.user_id
 
-        # حالت مساوی
         return self.player_a.user_id
 
     # =========================================================
-    # پیدا کردن بزرگ‌ترین Double
+    # بزرگ‌ترین Double
     # =========================================================
 
     def _highest_double(
@@ -257,6 +297,20 @@ class DominoGame:
         return left + right
 
     # =========================================================
+    # مجموع پیپ‌های دست
+    # =========================================================
+
+    def _hand_pip_sum(
+        self,
+        player: Player,
+    ) -> int:
+
+        return sum(
+            self._tile_value(tile)
+            for tile in player.hand
+        )
+
+    # =========================================================
     # آیا مهره قابل بازی است؟
     # =========================================================
 
@@ -268,7 +322,6 @@ class DominoGame:
         if self.state is None:
             return False
 
-        # اولین مهره
         if not self.state.board_tiles:
             return True
 
@@ -282,7 +335,7 @@ class DominoGame:
         )
 
     # =========================================================
-    # مهره‌های قابل بازی بازیکن
+    # مهره‌های قابل بازی
     # =========================================================
 
     def get_playable_tiles(
@@ -321,7 +374,6 @@ class DominoGame:
         if self.state is None:
             return False
 
-        # بررسی نوبت
         if self.state.current_turn != user_id:
             return False
 
@@ -330,7 +382,6 @@ class DominoGame:
         if player is None:
             return False
 
-        # بررسی index
         if (
             tile_index < 0
             or tile_index >= len(player.hand)
@@ -339,14 +390,10 @@ class DominoGame:
 
         tile = player.hand[tile_index]
 
-        # بررسی امکان بازی
         if not self.can_play_tile(tile):
             return False
 
-        # =====================================================
-        # اولین مهره روی زمین
-        # =====================================================
-
+        # اولین مهره
         if not self.state.board_tiles:
 
             player.remove_from_hand(tile)
@@ -364,10 +411,7 @@ class DominoGame:
 
             return True
 
-        # =====================================================
-        # بازی روی زمین
-        # =====================================================
-
+        # مهره روی زمین
         success = self._place_tile(
             player,
             tile,
@@ -384,7 +428,7 @@ class DominoGame:
         return True
 
     # =========================================================
-    # قرار دادن مهره روی زمین
+    # قرار دادن مهره
     # =========================================================
 
     def _place_tile(
@@ -412,15 +456,12 @@ class DominoGame:
             or right == right_end
         )
 
-        # فقط سمت چپ ممکن است
         if can_left and not can_right:
             side = "left"
 
-        # فقط سمت راست ممکن است
         elif can_right and not can_left:
             side = "right"
 
-        # هر دو سمت ممکن است
         elif can_left and can_right:
 
             if side not in ("left", "right"):
@@ -429,10 +470,7 @@ class DominoGame:
         else:
             return False
 
-        # =====================================================
-        # قرار دادن سمت چپ
-        # =====================================================
-
+        # سمت چپ
         if side == "left":
 
             player.remove_from_hand(tile)
@@ -449,10 +487,7 @@ class DominoGame:
 
             return True
 
-        # =====================================================
-        # قرار دادن سمت راست
-        # =====================================================
-
+        # سمت راست
         if side == "right":
 
             player.remove_from_hand(tile)
@@ -469,7 +504,7 @@ class DominoGame:
         return False
 
     # =========================================================
-    # خرید مهره از Boneyard
+    # خرید مهره
     # =========================================================
 
     def draw_tile(
@@ -497,9 +532,7 @@ class DominoGame:
         if self.deck is None:
             return None
 
-        # اگر مهره قابل بازی دارد،
-        # نباید خرید کند.
-
+        # اگر مهره قابل بازی دارد، خرید ممنوع
         if self.get_playable_tiles(user_id):
             return None
 
@@ -518,7 +551,7 @@ class DominoGame:
         return tile
 
     # =========================================================
-    # پاس دادن
+    # پاس
     # =========================================================
 
     def pass_turn(
@@ -538,45 +571,34 @@ class DominoGame:
         if self.state.current_turn != user_id:
             return False
 
-        # اگر مهره قابل بازی دارد،
-        # اجازه Pass ندارد.
-
+        # مهره قابل بازی دارد → پاس ممنوع
         if self.get_playable_tiles(user_id):
             return False
 
-        # اگر Boneyard هنوز مهره دارد،
-        # باید خرید کند.
-
+        # هنوز مهره در Boneyard هست → باید خرید کند
         if (
             self.deck is not None
             and not self.deck.is_empty()
         ):
             return False
 
-        # افزایش تعداد Pass
-
         self.state.pass_count += 1
 
-        # دو Pass پشت سر هم یعنی Block
-
+        # دو پاس → Block
         if self.state.pass_count >= 2:
 
             self._end_round_blocked()
 
             return True
 
-        # نوبت بازیکن مقابل
-
         self.state.current_turn = (
-            self._other_player(
-                user_id
-            ).user_id
+            self._other_player(user_id).user_id
         )
 
         return True
 
     # =========================================================
-    # بعد از بازی مهره
+    # بعد از بازی موفق
     # =========================================================
 
     def _after_play(
@@ -586,8 +608,6 @@ class DominoGame:
 
         if self.state is None:
             return
-
-        # هر حرکت موفق Pass قبلی را می‌شکند.
 
         self.state.pass_count = 0
 
@@ -599,16 +619,12 @@ class DominoGame:
 
             return
 
-        # نوبت بازیکن مقابل
-
         self.state.current_turn = (
-            self._other_player(
-                user_id
-            ).user_id
+            self._other_player(user_id).user_id
         )
 
     # =========================================================
-    # پایان دور با تمام شدن مهره‌های بازیکن
+    # پایان دست با خالی شدن دست
     # =========================================================
 
     def _end_round_winner(
@@ -619,41 +635,48 @@ class DominoGame:
         if self.state is None:
             return
 
+        if self.round_finished:
+            return
+
         self.round_finished = True
         self.round_winner = user_id
 
         winner = self.get_player(user_id)
 
-        loser = self._other_player(user_id)
-
         if winner is None:
             return
 
-        winner_points = sum(
-            self._tile_value(tile)
-            for tile in loser.hand
-        )
+        loser = self._other_player(user_id)
+
+        points = self._hand_pip_sum(loser)
+
+        winner.score += points
 
         self.last_round_summary = {
+            "round_number": self.round_number,
             "winner": user_id,
             "reason": "empty_hand",
-            "points": winner_points,
+            "points": points,
+            "scores": {
+                self.player_a.user_id:
+                    self.player_a.score,
+                self.player_b.user_id:
+                    self.player_b.score,
+            },
             "remaining_tiles": {
-                winner.user_id:
-                    len(winner.hand),
-
-                loser.user_id:
-                    len(loser.hand),
+                self.player_a.user_id:
+                    len(self.player_a.hand),
+                self.player_b.user_id:
+                    len(self.player_b.hand),
             },
         }
 
         self.state.round_over = True
 
-        self.match_finished = True
-        self.match_winner = user_id
+        self._check_match_finished()
 
     # =========================================================
-    # پایان دور به دلیل Block
+    # پایان دست به دلیل Block
     # =========================================================
 
     def _end_round_blocked(self):
@@ -661,43 +684,65 @@ class DominoGame:
         if self.state is None:
             return
 
+        if self.round_finished:
+            return
+
         self.round_finished = True
 
-        a_points = sum(
-            self._tile_value(tile)
-            for tile in self.player_a.hand
+        a_points = self._hand_pip_sum(
+            self.player_a
         )
 
-        b_points = sum(
-            self._tile_value(tile)
-            for tile in self.player_b.hand
+        b_points = self._hand_pip_sum(
+            self.player_b
         )
 
         if a_points < b_points:
+
             winner_id = self.player_a.user_id
+            points = b_points
 
         elif b_points < a_points:
+
             winner_id = self.player_b.user_id
+            points = a_points
 
         else:
+
             winner_id = None
+            points = 0
 
         self.round_winner = winner_id
 
+        if winner_id is not None:
+
+            winner = self.get_player(
+                winner_id
+            )
+
+            if winner is not None:
+                winner.score += points
+
         self.last_round_summary = {
+            "round_number": self.round_number,
             "winner": winner_id,
             "reason": "blocked",
-            "points": {
+            "points": points,
+            "pip_totals": {
                 self.player_a.user_id:
                     a_points,
-
                 self.player_b.user_id:
                     b_points,
+            },
+            "scores": {
+                self.player_a.user_id:
+                    self.player_a.score,
+                self.player_b.user_id:
+                    self.player_b.score,
             },
             "remaining_tiles": {
                 self.player_a.user_id:
                     len(self.player_a.hand),
-
                 self.player_b.user_id:
                     len(self.player_b.hand),
             },
@@ -706,11 +751,54 @@ class DominoGame:
         self.state.is_blocked = True
         self.state.round_over = True
 
-        self.match_finished = True
-        self.match_winner = winner_id
+        self._check_match_finished()
 
     # =========================================================
-    # وضعیت بازی
+    # بررسی پایان Match
+    # =========================================================
+
+    def _check_match_finished(self):
+
+        if (
+            self.player_a.score >=
+            MATCH_TARGET_SCORE
+        ):
+
+            self.match_finished = True
+
+            self.match_winner = (
+                self.player_a.user_id
+            )
+
+            return
+
+        if (
+            self.player_b.score >=
+            MATCH_TARGET_SCORE
+        ):
+
+            self.match_finished = True
+
+            self.match_winner = (
+                self.player_b.user_id
+            )
+
+    # =========================================================
+    # امتیازات Match
+    # =========================================================
+
+    def get_scores(self) -> dict:
+
+        return {
+            self.player_a.user_id:
+                self.player_a.score,
+
+            self.player_b.user_id:
+                self.player_b.score,
+        }
+
+    # =========================================================
+    # وضعیت کامل بازی
     # =========================================================
 
     def get_state(self) -> dict:
@@ -728,15 +816,29 @@ class DominoGame:
 
                 "boneyard_remaining": 0,
 
-                "round_finished": False,
+                "round_number":
+                    self.round_number,
 
-                "round_winner": None,
+                "round_finished":
+                    self.round_finished,
 
-                "match_finished": False,
+                "round_winner":
+                    self.round_winner,
 
-                "match_winner": None,
+                "match_finished":
+                    self.match_finished,
 
-                "last_round_summary": None,
+                "match_winner":
+                    self.match_winner,
+
+                "match_target_score":
+                    MATCH_TARGET_SCORE,
+
+                "scores":
+                    self.get_scores(),
+
+                "last_round_summary":
+                    self.last_round_summary,
             }
 
         return {
@@ -756,6 +858,9 @@ class DominoGame:
                     else 0
                 ),
 
+            "round_number":
+                self.round_number,
+
             "round_finished":
                 self.round_finished,
 
@@ -768,57 +873,28 @@ class DominoGame:
             "match_winner":
                 self.match_winner,
 
+            "match_target_score":
+                MATCH_TARGET_SCORE,
+
+            "scores":
+                self.get_scores(),
+
             "last_round_summary":
                 self.last_round_summary,
         }
 
     # =========================================================
-    # امتیازات
+    # برنده Match
     # =========================================================
 
-    def get_scores(self) -> dict:
-
-        scores = {
-            self.player_a.user_id: 0,
-            self.player_b.user_id: 0,
-        }
-
-        if self.last_round_summary is None:
-            return scores
-
-        winner = self.last_round_summary.get(
-            "winner"
-        )
-
-        if winner is None:
-            return scores
-
-        points = self.last_round_summary.get(
-            "points",
-            0,
-        )
-
-        if isinstance(points, int):
-            scores[winner] = points
-
-        return scores
-
-    # =========================================================
-    # برنده
-    # =========================================================
-
-    def get_winner(
-        self,
-    ) -> int | None:
+    def get_winner(self) -> int | None:
 
         return self.match_winner
 
     # =========================================================
-    # پایان بازی
+    # پایان Match
     # =========================================================
 
-    def is_finished(
-        self,
-    ) -> bool:
+    def is_finished(self) -> bool:
 
         return self.match_finished
