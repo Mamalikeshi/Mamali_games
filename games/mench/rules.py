@@ -10,8 +10,6 @@ It does NOT manage:
 - dice rolling state
 - API
 - frontend
-
-Those responsibilities belong to other modules.
 """
 
 from __future__ import annotations
@@ -36,22 +34,28 @@ DICE_MAX = 6
 ENTER_ROLL = 6
 YARD_STEP = -1
 
+TRACK_FIRST_STEP = 0
+TRACK_LAST_STEP = 51
+
+HOME_FIRST_STEP = 52
+HOME_LAST_STEP = 56
+
 
 # ============================================================
 # Dice validation
 # ============================================================
 
-
 def is_valid_dice_value(dice_value: int) -> bool:
-    """Return True when the dice value is between 1 and 6."""
-    return DICE_MIN <= dice_value <= DICE_MAX
+    return (
+        isinstance(dice_value, int)
+        and DICE_MIN <= dice_value <= DICE_MAX
+    )
 
 
 def validate_dice_value(dice_value: int) -> None:
-    """Raise ValueError when the dice value is invalid."""
     if not is_valid_dice_value(dice_value):
         raise ValueError(
-            "Dice value must be between 1 and 6."
+            "Dice value must be an integer between 1 and 6."
         )
 
 
@@ -59,15 +63,12 @@ def validate_dice_value(dice_value: int) -> None:
 # Piece state helpers
 # ============================================================
 
-
 def can_enter_from_yard(
     piece: Piece,
     dice_value: int,
 ) -> bool:
     """
-    Check whether a yard piece can enter the board.
-
-    A piece can leave the yard only when the player rolls 6.
+    A yard piece can enter only with a 6.
     """
 
     validate_dice_value(dice_value)
@@ -79,29 +80,16 @@ def can_enter_from_yard(
 
 
 def is_piece_finished(piece: Piece) -> bool:
-    """Return True when the piece has reached the center."""
     return piece.is_finished()
 
 
 def is_piece_on_board(piece: Piece) -> bool:
-    """
-    Return True when the piece is on the shared track
-    or inside its home column.
-    """
-
-    return (
-        piece.status in {
-            "track",
-            "home_column",
-        }
-        and not piece.is_finished()
-    )
+    return piece.is_on_board()
 
 
 # ============================================================
 # Destination calculation
 # ============================================================
-
 
 def calculate_destination(
     piece: Piece,
@@ -110,34 +98,32 @@ def calculate_destination(
     """
     Calculate the destination relative_step.
 
-    Returns:
-        None -> piece cannot move
-        int  -> destination step
-
     Rules:
-    - yard piece requires a 6 and enters at step 0
-    - board piece advances by dice value
-    - finished piece cannot move
-    - destination cannot pass FINISH_STEP
+    - yard + 6 -> step 0
+    - yard + anything else -> illegal
+    - board piece -> current step + dice
+    - finished -> cannot move
+    - cannot pass FINISH_STEP
     """
 
     validate_dice_value(dice_value)
 
-    # Finished pieces cannot move.
+    # Finished piece cannot move.
     if piece.is_finished():
         return None
 
-    # Yard -> entry.
+    # Yard -> starting cell.
     if piece.is_in_yard():
         if dice_value == ENTER_ROLL:
-            return 0
+            return TRACK_FIRST_STEP
 
         return None
 
-    # Normal board movement.
-    destination = (
-        piece.relative_step + dice_value
-    )
+    # Safety check for corrupted/invalid state.
+    if piece.relative_step < TRACK_FIRST_STEP:
+        return None
+
+    destination = piece.relative_step + dice_value
 
     # Cannot pass the center.
     if destination > FINISH_STEP:
@@ -150,30 +136,23 @@ def calculate_destination(
 # Movement validation
 # ============================================================
 
-
 def can_piece_move(
     piece: Piece,
     dice_value: int,
 ) -> bool:
-    """
-    Return True when the piece has a legal move.
-    """
-
-    return calculate_destination(
-        piece,
-        dice_value,
-    ) is not None
+    return (
+        calculate_destination(
+            piece,
+            dice_value,
+        )
+        is not None
+    )
 
 
 def movable_pieces(
     player: Player,
     dice_value: int,
 ) -> list[Piece]:
-    """
-    Return all pieces belonging to the player that can move
-    with the current dice value.
-    """
-
     validate_dice_value(dice_value)
 
     return [
@@ -187,18 +166,17 @@ def movable_pieces(
 # Position helpers
 # ============================================================
 
-
 def destination_global_cell(
     piece: Piece,
     dice_value: int,
 ) -> int | None:
     """
-    Return the global track cell of the destination.
+    Return the global track cell of destination.
 
-    Returns None when:
-    - the piece enters home column
-    - the piece finishes
-    - the piece cannot move
+    Returns None for:
+    - home column
+    - finished
+    - illegal move
     """
 
     destination = calculate_destination(
@@ -207,6 +185,9 @@ def destination_global_cell(
     )
 
     if destination is None:
+        return None
+
+    if not is_on_track(destination):
         return None
 
     return global_cell_for_step(
@@ -220,9 +201,12 @@ def is_destination_safe(
     dice_value: int,
 ) -> bool:
     """
-    Return True when the destination is a safe position.
+    Determine whether destination is safe.
 
-    Home-column and finished positions are safe by definition.
+    Safe:
+    - home column
+    - finished
+    - designated safe track cells
     """
 
     destination = calculate_destination(
@@ -233,13 +217,16 @@ def is_destination_safe(
     if destination is None:
         return False
 
+    # Home column / finish.
+    if not is_on_track(destination):
+        return True
+
     global_cell = global_cell_for_step(
         piece.color,
         destination,
     )
 
     if global_cell is None:
-        # Home column / finished.
         return True
 
     return is_safe_track_cell(global_cell)
@@ -249,7 +236,6 @@ def is_destination_safe(
 # Capture rules
 # ============================================================
 
-
 def can_capture(
     attacker: Piece,
     victim: Piece,
@@ -258,20 +244,27 @@ def can_capture(
     """
     Determine whether attacker can capture victim.
 
-    Capture is possible when:
-    - attacker and victim have different colors
-    - both are on the shared track
-    - they occupy the same global cell
-    - the destination cell is not safe
+    Capture requires:
+    - different colors
+    - both pieces on shared track
+    - both occupy the same global cell
+    - destination is not safe
     """
 
+    # Same color cannot capture itself.
     if attacker.color == victim.color:
         return False
 
-    if not is_on_track(attacker.relative_step):
+    # Attacker must be on shared track.
+    if not attacker.is_on_track():
         return False
 
-    if not is_on_track(victim.relative_step):
+    # Victim must be on shared track.
+    if not victim.is_on_track():
+        return False
+
+    # Destination must be a valid shared-track cell.
+    if not 0 <= destination_global_cell < 52:
         return False
 
     attacker_cell = global_cell_for_step(
@@ -284,15 +277,21 @@ def can_capture(
         victim.relative_step,
     )
 
-    if attacker_cell is None or victim_cell is None:
+    if attacker_cell is None:
         return False
 
+    if victim_cell is None:
+        return False
+
+    # Attacker must actually land on this cell.
     if attacker_cell != destination_global_cell:
         return False
 
+    # Victim must occupy the same cell.
     if victim_cell != destination_global_cell:
         return False
 
+    # Safe cells cannot be captured.
     if is_safe_track_cell(destination_global_cell):
         return False
 
@@ -305,8 +304,8 @@ def pieces_to_capture(
     dice_value: int,
 ) -> list[Piece]:
     """
-    Return all opponent pieces that would be captured if the
-    attacker moves using the given dice value.
+    Return every opponent piece that would be captured
+    by the attacker's move.
     """
 
     destination = destination_global_cell(
@@ -324,7 +323,6 @@ def pieces_to_capture(
 
     for player in opponents:
         for victim in player.pieces:
-
             if can_capture(
                 attacker,
                 victim,
@@ -339,10 +337,9 @@ def pieces_to_capture(
 # Applying capture
 # ============================================================
 
-
 def capture_piece(piece: Piece) -> None:
     """
-    Send a captured piece back to its yard.
+    Send a captured piece back to the yard.
     """
 
     piece.send_home()
@@ -351,7 +348,6 @@ def capture_piece(piece: Piece) -> None:
 # ============================================================
 # Movement result
 # ============================================================
-
 
 def movement_result(
     piece: Piece,
@@ -383,9 +379,29 @@ def movement_result(
             "safe": False,
         }
 
-    global_cell = global_cell_for_step(
-        piece.color,
-        destination,
+    global_cell = None
+
+    if is_on_track(destination):
+        global_cell = global_cell_for_step(
+            piece.color,
+            destination,
+        )
+
+    enters_board = (
+        piece.is_in_yard()
+        and destination == TRACK_FIRST_STEP
+    )
+
+    enters_home_column = (
+        HOME_FIRST_STEP <= destination <= HOME_LAST_STEP
+    )
+
+    finishes = destination == FINISH_STEP
+
+    safe = (
+        True
+        if global_cell is None
+        else is_safe_track_cell(global_cell)
     )
 
     return {
@@ -394,22 +410,10 @@ def movement_result(
         "from_step": piece.relative_step,
         "to_step": destination,
         "global_cell": global_cell,
-        "enters_board": (
-            piece.is_in_yard()
-            and destination == 0
-        ),
-        "enters_home_column": (
-            destination > 0
-            and destination > 51
-        ),
-        "finishes": (
-            destination == FINISH_STEP
-        ),
-        "safe": (
-            True
-            if global_cell is None
-            else is_safe_track_cell(global_cell)
-        ),
+        "enters_board": enters_board,
+        "enters_home_column": enters_home_column,
+        "finishes": finishes,
+        "safe": safe,
     }
 
 
@@ -417,15 +421,10 @@ def movement_result(
 # Player-level helpers
 # ============================================================
 
-
 def player_can_move(
     player: Player,
     dice_value: int,
 ) -> bool:
-    """
-    Return True when at least one piece can move.
-    """
-
     return bool(
         movable_pieces(
             player,
@@ -437,5 +436,4 @@ def player_can_move(
 def player_has_finished(
     player: Player,
 ) -> bool:
-    """Return True when all four pieces are finished."""
     return player.all_finished()
