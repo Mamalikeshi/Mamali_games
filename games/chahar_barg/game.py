@@ -103,6 +103,24 @@ def choose_capture_option(
             return
 
         # -----------------------------------------------------
+        # ثبت جزئیات این حرکت (برای نمایش تاخیری به حریف)
+        # -----------------------------------------------------
+
+        self.state.last_move = {
+            "sequence": self.state.cards_played_count,
+            "player_id": user_id,
+            "played_card": card.to_dict(),
+            "captured": [
+                c.to_dict()
+                for c in result["captured"]
+            ],
+            "is_sour": bool(result["is_sour"]),
+            "is_jack_sweep": bool(
+                result["is_jack_sweep"]
+            ),
+        }
+
+        # -----------------------------------------------------
         # کارت بازی‌شده را از دست حذف می‌کنیم.
         # -----------------------------------------------------
 
