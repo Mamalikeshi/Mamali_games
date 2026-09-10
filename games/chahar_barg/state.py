@@ -22,6 +22,10 @@ class ChaharBargState:
         # آخرین بازیکنی که کارتی جمع کرده (برای دادن کارت‌های ته‌مونده‌ی زمین)
         self.last_capturer: int | None = None
 
+        # جزئیات آخرین حرکتی که اعمال شده (برای نشون دادن به حریف
+        # چه کارتی بازی شد و چی جمع کرد، قبل از این‌که واقعاً حذف بشه)
+        self.last_move: dict | None = None
+
         # وقتی deck خالی شده و این آخرین دست (۸ برگ پایانی) در حال بازی شدنه
         self.is_final_deal: bool = False
 
@@ -47,6 +51,7 @@ class ChaharBargState:
             "current_turn": self.current_turn,
             "sour_points": self.sour_points,
             "last_capturer": self.last_capturer,
+            "last_move": self.last_move,
             "is_final_deal": self.is_final_deal,
             "round_over": self.round_over,
             "turn_started_at": self.turn_started_at,
