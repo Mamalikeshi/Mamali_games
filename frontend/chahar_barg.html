@@ -707,12 +707,12 @@ function renderTrickArea(tableCards) {
     // ساخت المان فقط برای کارت‌های واقعاً جدید
     tableCards.forEach((card) => {
         const key = cardKey(card);
-        if (!trickCardElements[key]) {
+       if (!trickCardElements[key]) {
             const div = document.createElement("div");
-            div.className = "card landing" + (RED_SUITS.includes(card.suit) ? " red" : "");
+            div.className = "card" + (RED_SUITS.includes(card.suit) ? " red" : "");
             div.innerHTML = cardInner(card);
             trickCardElements[key] = div;
-        }
+        } 
     });
 
     // چیدمان به ترتیب فعلی، بدون ساختن دوباره‌ی کارت‌های قبلی
