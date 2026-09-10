@@ -340,7 +340,6 @@
         <div id="capture-options"></div>
     </div>
 </div>
-
 <script>
 
 let tg = window.Telegram.WebApp;
@@ -650,8 +649,7 @@ const PIP_PATTERNS = {
     9: ["LR", "LR", "C", "LR", "LR"],
     10: ["LR", "LR", "C", "C", "LR", "LR"],
 };
-
-const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
+    const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
 
 function cardInner(card) {
     const textSymbol = SUIT_TEXT[card.suit];
@@ -684,6 +682,46 @@ function cardLabel(card) {
 }
 
 let capturePromptShownFor = null;
+
+// نگه‌داشتن المان‌های زمین بین رفرش‌ها، تا کارت‌هایی که قبلاً روی
+// زمین بودن دوباره ساخته و انیمیشن نشن (باعث لرزیدن می‌شد).
+let trickCardElements = {};
+
+function cardKey(card) {
+    return card.rank + "_" + card.suit;
+}
+
+function renderTrickArea(tableCards) {
+    const trickArea = document.getElementById("trick-area");
+    const newKeys = tableCards.map(cardKey);
+    const newKeySet = new Set(newKeys);
+
+    // حذف کارت‌هایی که دیگه روی زمین نیستن (جمع شدن یا برداشته شدن)
+    for (const key in trickCardElements) {
+        if (!newKeySet.has(key)) {
+            trickCardElements[key].remove();
+            delete trickCardElements[key];
+        }
+    }
+
+    // ساخت المان فقط برای کارت‌های واقعاً جدید
+    tableCards.forEach((card) => {
+        const key = cardKey(card);
+        if (!trickCardElements[key]) {
+            const div = document.createElement("div");
+            div.className = "card landing" + (RED_SUITS.includes(card.suit) ? " red" : "");
+            div.innerHTML = cardInner(card);
+            trickCardElements[key] = div;
+        }
+    });
+
+    // چیدمان به ترتیب فعلی، بدون ساختن دوباره‌ی کارت‌های قبلی
+    // (appendChild روی المان موجود فقط جاش رو عوض می‌کنه، انیمیشنش
+    // دوباره اجرا نمیشه)
+    newKeys.forEach((key) => {
+        trickArea.appendChild(trickCardElements[key]);
+    });
+}
 
 function renderGame(state) {
     const round = state.state;
@@ -748,25 +786,21 @@ function renderGame(state) {
     const scoreRow = document.getElementById("score-row");
     scoreRow.innerHTML = "";
     const totalScore = state.total_score || {};
+    const sourPoints = round.sour_points || {};
     const players = [state.player_a, state.player_b];
     players.forEach((p) => {
         if (!p) return;
         const label = (p.user_id === userId) ? "من" : "حریف";
+        const mySour = sourPoints[p.user_id] || 0;
         const div = document.createElement("div");
         div.innerHTML =
             label + "<br>امتیاز: " + (totalScore[p.user_id] || 0) +
-            "<br><span style='font-size:12px;color:#777'>جمع‌شده: " + p.captured_count + "</span>";
+            "<br><span style='font-size:12px;color:#777'>جمع‌شده: " + p.captured_count + "</span>" +
+            (mySour > 0 ? "<br><span style='font-size:12px;color:#f2a13c'>🔥 سور: " + mySour + "</span>" : "");
         scoreRow.appendChild(div);
     });
 
-    const trickArea = document.getElementById("trick-area");
-    trickArea.innerHTML = "";
-    (round.table_cards || []).forEach((card) => {
-        const div = document.createElement("div");
-        div.className = "card landing" + (RED_SUITS.includes(card.suit) ? " red" : "");
-        div.innerHTML = cardInner(card);
-        trickArea.appendChild(div);
-    });
+    renderTrickArea(round.table_cards || []);
 
     // انتخاب ترکیب ۱۱ (وقتی چند حالت جمع‌کردن ممکنه)
     const pending = state.pending_capture;
