@@ -100,6 +100,24 @@
             animation: cardLand 0.3s ease-out;
         }
 
+        .card{
+            transition: transform 0.15s ease-out;
+        }
+
+        .card.capturing{
+            box-shadow: 0 0 0 3px #ffd54a, 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .card.selectable{
+            box-shadow: 0 0 0 3px #4ade80, 0 2px 4px rgba(0,0,0,0.5);
+            cursor:pointer;
+        }
+
+        .card.selected{
+            box-shadow: 0 0 0 3px #2f80ed, 0 2px 4px rgba(0,0,0,0.5);
+            transform: translateY(-6px);
+        }
+
         .card .corner{
             position:absolute;
             top:3px;
@@ -306,6 +324,8 @@
 
     <div class="trick-area" id="trick-area"></div>
 
+    <div class="status" id="capture-status" style="display:none; color:#4ade80;"></div>
+
     <div class="hand" id="hand"></div>
 
     <div class="exit-link" onclick="handleExitClick()">🚪 خروج کامل از بازی</div>
@@ -334,15 +354,8 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="capture-modal">
-    <div class="modal-box">
-        <p>کدوم ترکیب رو می‌خوای جمع کنی؟</p>
-        <div id="capture-options"></div>
-    </div>
-</div>
 <script>
-
-let tg = window.Telegram.WebApp;
+    let tg = window.Telegram.WebApp;
 tg.expand();
 
 const SUIT_SYMBOLS = {
@@ -649,7 +662,8 @@ const PIP_PATTERNS = {
     9: ["LR", "LR", "C", "LR", "LR"],
     10: ["LR", "LR", "C", "C", "LR", "LR"],
 };
-    const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
+
+const faceEmojis = { J: "🤵", Q: "👸", K: "🤴" };
 
 function cardInner(card) {
     const textSymbol = SUIT_TEXT[card.suit];
@@ -681,8 +695,6 @@ function cardLabel(card) {
     return card.rank + SUIT_TEXT[card.suit];
 }
 
-let capturePromptShownFor = null;
-
 // نگه‌داشتن المان‌های زمین بین رفرش‌ها، تا کارت‌هایی که قبلاً روی
 // زمین بودن دوباره ساخته و انیمیشن نشن (باعث لرزیدن می‌شد).
 let trickCardElements = {};
@@ -691,7 +703,28 @@ function cardKey(card) {
     return card.rank + "_" + card.suit;
 }
 
-function renderTrickArea(tableCards) {
+function keysOf(cards) {
+    return cards.map(cardKey);
+}
+
+function optionMatchesSelection(optionKeys, selection) {
+    if (optionKeys.length !== selection.length) return false;
+    const s = new Set(selection);
+    return optionKeys.every((k) => s.has(k));
+}
+
+function isSupersetCompatible(optionKeys, selection) {
+    const s = new Set(optionKeys);
+    return selection.every((k) => s.has(k));
+}
+    // options: { capturingKeys, selectableKeys, selectedKeys, onCardClick }
+function renderTrickArea(tableCards, options) {
+    options = options || {};
+    const capturingKeys = new Set(options.capturingKeys || []);
+    const selectableKeys = new Set(options.selectableKeys || []);
+    const selectedKeys = new Set(options.selectedKeys || []);
+    const onCardClick = options.onCardClick || null;
+
     const trickArea = document.getElementById("trick-area");
     const newKeys = tableCards.map(cardKey);
     const newKeySet = new Set(newKeys);
@@ -707,21 +740,101 @@ function renderTrickArea(tableCards) {
     // ساخت المان فقط برای کارت‌های واقعاً جدید
     tableCards.forEach((card) => {
         const key = cardKey(card);
-       if (!trickCardElements[key]) {
+        if (!trickCardElements[key]) {
             const div = document.createElement("div");
             div.className = "card" + (RED_SUITS.includes(card.suit) ? " red" : "");
             div.innerHTML = cardInner(card);
             trickCardElements[key] = div;
-        } 
+        }
     });
 
     // چیدمان به ترتیب فعلی، بدون ساختن دوباره‌ی کارت‌های قبلی
-    // (appendChild روی المان موجود فقط جاش رو عوض می‌کنه، انیمیشنش
-    // دوباره اجرا نمیشه)
+    // (appendChild روی المان موجود فقط جاش رو عوض می‌کنه)
     newKeys.forEach((key) => {
-        trickArea.appendChild(trickCardElements[key]);
+        const el = trickCardElements[key];
+
+        el.classList.toggle("capturing", capturingKeys.has(key));
+        el.classList.toggle("selectable", selectableKeys.has(key));
+        el.classList.toggle("selected", selectedKeys.has(key));
+
+        if (selectableKeys.has(key) && onCardClick) {
+            el.onclick = () => onCardClick(key);
+        } else {
+            el.onclick = null;
+        }
+
+        trickArea.appendChild(el);
     });
 }
+
+// -------------------------------------------------------------
+// انتخاب ترکیب ۱۱ با کلیک روی کارت‌های زمین (به‌جای لیست متنی)
+// -------------------------------------------------------------
+
+let captureSelection = [];
+let captureSelectionFor = null;
+let lastPendingCapture = null;
+let lastTableCardsSnapshot = [];
+
+function renderTrickAreaForCapture() {
+    const pending = lastPendingCapture;
+    if (!pending) return;
+
+    const compatibleOptions = pending.options.filter((opt) =>
+        isSupersetCompatible(keysOf(opt.table_cards), captureSelection)
+    );
+
+    const selectableKeys = new Set();
+    compatibleOptions.forEach((opt) =>
+        keysOf(opt.table_cards).forEach((k) => selectableKeys.add(k))
+    );
+
+    renderTrickArea(lastTableCardsSnapshot, {
+        selectableKeys: Array.from(selectableKeys),
+        selectedKeys: captureSelection,
+        onCardClick: handleCaptureCardClick,
+    });
+
+    const statusEl = document.getElementById("capture-status");
+    statusEl.innerText =
+        "برای جمع کردن با " + cardLabel(pending.card) + "، روی کارت‌های سبز بزن";
+    statusEl.style.display = "block";
+}
+
+function handleCaptureCardClick(key) {
+    const idx = captureSelection.indexOf(key);
+    if (idx === -1) {
+        captureSelection.push(key);
+    } else {
+        captureSelection.splice(idx, 1);
+    }
+
+    const pending = lastPendingCapture;
+    if (!pending) return;
+
+    const matched = pending.options.find((opt) =>
+        optionMatchesSelection(keysOf(opt.table_cards), captureSelection)
+    );
+
+    if (matched) {
+        const optionId = matched.option_id;
+        captureSelection = [];
+        captureSelectionFor = null;
+        document.getElementById("capture-status").style.display = "none";
+        chooseCaptureOption(optionId);
+        return;
+    }
+
+    renderTrickAreaForCapture();
+}
+
+// -------------------------------------------------------------
+// نمایش تاخیری حرکت حریف (۲ ثانیه) قبل از حذف واقعی کارت‌ها
+// -------------------------------------------------------------
+
+let lastMoveSequenceShown; // undefined یعنی هنوز اولین رندر انجام نشده
+let revealHoldUntil = 0;
+let pendingRevealTimeout = null;
 
 function renderGame(state) {
     const round = state.state;
@@ -800,20 +913,67 @@ function renderGame(state) {
         scoreRow.appendChild(div);
     });
 
-    renderTrickArea(round.table_cards || []);
-
-    // انتخاب ترکیب ۱۱ (وقتی چند حالت جمع‌کردن ممکنه)
     const pending = state.pending_capture;
-    if (pending && pending.user_id === userId) {
-        if (capturePromptShownFor !== pending.card_index + "-" + round.cards_played_count) {
-            capturePromptShownFor = pending.card_index + "-" + round.cards_played_count;
-            showCaptureOptions(pending);
-        }
-    } else {
-        document.getElementById("capture-modal").style.display = "none";
-    }
-
     const iHavePendingCapture = !!(pending && pending.user_id === userId);
+
+    lastPendingCapture = pending;
+    lastTableCardsSnapshot = round.table_cards || [];
+
+    if (iHavePendingCapture) {
+        // نوبت من برای انتخاب ترکیبه: انتخاب رو با شروع حرکت جدید پاک کن
+        const pendingKey = pending.card_index + "-" + round.cards_played_count;
+        if (captureSelectionFor !== pendingKey) {
+            captureSelectionFor = pendingKey;
+            captureSelection = [];
+        }
+        renderTrickAreaForCapture();
+    } else {
+        captureSelectionFor = null;
+        captureSelection = [];
+        document.getElementById("capture-status").style.display = "none";
+
+        const lastMove = round.last_move;
+
+        if (lastMoveSequenceShown === undefined) {
+            // اولین رندر (بارگذاری صفحه) - چیزی رو با تاخیر نشون نده
+            lastMoveSequenceShown = lastMove ? lastMove.sequence : null;
+            renderTrickArea(round.table_cards || []);
+        } else if (Date.now() < revealHoldUntil) {
+            // در حال نمایش حرکت قبلی حریفیم؛ فعلاً دست به زمین نزن،
+            // setTimeout قبلی خودش زمین رو به‌روز می‌کنه.
+        } else if (
+            lastMove &&
+            lastMove.sequence !== lastMoveSequenceShown &&
+            lastMove.player_id !== userId
+        ) {
+            // حریف تازه یه کارت بازی کرده: قبل از حذف، ۲ ثانیه نشونش بده
+            lastMoveSequenceShown = lastMove.sequence;
+
+            const captured = lastMove.captured || [];
+            let tableToShow = round.table_cards || [];
+            let highlightKeys;
+
+            if (captured.length > 0) {
+                tableToShow = tableToShow.concat(captured);
+                highlightKeys = keysOf(captured);
+            } else {
+                highlightKeys = [cardKey(lastMove.played_card)];
+            }
+
+            renderTrickArea(tableToShow, { capturingKeys: highlightKeys });
+
+            revealHoldUntil = Date.now() + 2000;
+            clearTimeout(pendingRevealTimeout);
+            pendingRevealTimeout = setTimeout(() => {
+                renderTrickArea(round.table_cards || []);
+            }, 2000);
+        } else {
+            if (lastMove) {
+                lastMoveSequenceShown = lastMove.sequence;
+            }
+            renderTrickArea(round.table_cards || []);
+        }
+    }
 
     const handDiv = document.getElementById("hand");
     handDiv.innerHTML = "";
@@ -830,37 +990,11 @@ function renderGame(state) {
         handDiv.appendChild(div);
     });
 }
-
-function showCaptureOptions(pending) {
-    const container = document.getElementById("capture-options");
-    container.innerHTML = "";
-
-    pending.options.forEach((opt) => {
-        const div = document.createElement("div");
-        div.className = "option-card";
-
-        const capturedText = opt.captured.map(cardLabel).join(" + ");
-        let extra = "";
-        if (opt.is_jack_sweep) extra += " 🃏 جمع‌کردن با سرباز";
-        if (opt.is_sour) extra += " 🔥 سور!";
-
-        div.innerHTML =
-            "با " + cardLabel(opt.played_card) + " جمع می‌کنی: " + capturedText + extra;
-
-        div.onclick = () => chooseCaptureOption(opt.option_id);
-        container.appendChild(div);
-    });
-
-    document.getElementById("capture-modal").style.display = "flex";
-}
-
-let isSubmittingMove = false;
+    let isSubmittingMove = false;
 
 async function chooseCaptureOption(optionId) {
     if (isSubmittingMove) return;
     isSubmittingMove = true;
-
-    document.getElementById("capture-modal").style.display = "none";
 
     const res = await api("/api/chahar_barg/game/choose", "POST", {
         room_id: roomId,
