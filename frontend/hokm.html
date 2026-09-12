@@ -359,39 +359,8 @@
 
 <script>
 
-// --- نمایش هر خطای جاوااسکریپتی رو خود صفحه، تا دیگه هیچ باگی بی‌صدا
-// باعث از کار افتادن کل بازی نشه (مخصوصاً رو گوشی‌ها/نسخه‌های تلگرام مختلف) ---
-function showFatalError(msg) {
-    let banner = document.getElementById('fatal-error-banner');
-    if (!banner) {
-        banner = document.createElement('div');
-        banner.id = 'fatal-error-banner';
-        banner.style.cssText =
-            'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;' +
-            'padding:10px;font-size:12px;z-index:99999;direction:ltr;text-align:left;' +
-            'white-space:pre-wrap;font-family:monospace;';
-        document.body.appendChild(banner);
-    }
-    banner.innerText += (banner.innerText ? '\n' : '') + msg;
-}
-
-window.addEventListener('error', function (e) {
-    showFatalError('JS error: ' + e.message + ' (line ' + e.lineno + ')');
-});
-
-window.addEventListener('unhandledrejection', function (e) {
-    const reason = e.reason && e.reason.message ? e.reason.message : e.reason;
-    showFatalError('Promise error: ' + reason);
-});
-
-let tg;
-try {
-    tg = window.Telegram.WebApp;
-    tg.expand();
-} catch (e) {
-    showFatalError('Telegram WebApp API در دسترس نیست: ' + e.message);
-    tg = { initDataUnsafe: {}, expand: function () {}, ready: function () {} };
-}
+let tg = window.Telegram.WebApp;
+tg.expand();
 
 const SUIT_SYMBOLS = {
     hearts: "♥️",
