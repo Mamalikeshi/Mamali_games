@@ -105,7 +105,7 @@
         }
 
         .card.capturing{
-            box-shadow: 0 0 0 3px #ffd54a, 0 2px 4px rgba(0,0,0,0.5);
+            box-shadow: 0 0 0 3px #2f80ed, 0 2px 4px rgba(0,0,0,0.5);
         }
 
         .card.selectable{
@@ -355,37 +355,8 @@
 </div>
 
 <script>
-    function showFatalError(msg) {
-        let banner = document.getElementById('fatal-error-banner');
-        if (!banner) {
-            banner = document.createElement('div');
-            banner.id = 'fatal-error-banner';
-            banner.style.cssText =
-                'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;' +
-                'padding:10px;font-size:12px;z-index:99999;direction:ltr;text-align:left;' +
-                'white-space:pre-wrap;font-family:monospace;';
-            document.body.appendChild(banner);
-        }
-        banner.innerText += (banner.innerText ? '\n' : '') + msg;
-    }
-
-    window.addEventListener('error', function (e) {
-        showFatalError('JS error: ' + e.message + ' (line ' + e.lineno + ')');
-    });
-
-    window.addEventListener('unhandledrejection', function (e) {
-        const reason = e.reason && e.reason.message ? e.reason.message : e.reason;
-        showFatalError('Promise error: ' + reason);
-    });
-
-    let tg;
-    try {
-        tg = window.Telegram.WebApp;
-        tg.expand();
-    } catch (e) {
-        showFatalError('Telegram WebApp API در دسترس نیست: ' + e.message);
-        tg = { initDataUnsafe: {}, expand: function () {}, ready: function () {} };
-    }
+let tg = window.Telegram.WebApp;
+tg.expand();
 
 const SUIT_SYMBOLS = {
     hearts: "♥️",
@@ -393,8 +364,7 @@ const SUIT_SYMBOLS = {
     clubs: "♣️",
     spades: "♠️",
 };
-
-const SUIT_TEXT = {
+    const SUIT_TEXT = {
     hearts: "♥",
     diamonds: "♦",
     clubs: "♣",
@@ -727,8 +697,7 @@ function cardLabel(card) {
 // نگه‌داشتن المان‌های زمین بین رفرش‌ها، تا کارت‌هایی که قبلاً روی
 // زمین بودن دوباره ساخته و انیمیشن نشن (باعث لرزیدن می‌شد).
 let trickCardElements = {};
-
-function cardKey(card) {
+    function cardKey(card) {
     return card.rank + "_" + card.suit;
 }
 
@@ -746,7 +715,8 @@ function isSupersetCompatible(optionKeys, selection) {
     const s = new Set(optionKeys);
     return selection.every((k) => s.has(k));
 }
-    // options: { capturingKeys, selectableKeys, selectedKeys, onCardClick }
+
+// options: { capturingKeys, selectableKeys, selectedKeys, onCardClick }
 function renderTrickArea(tableCards, options) {
     options = options || {};
     const capturingKeys = new Set(options.capturingKeys || []);
@@ -858,7 +828,7 @@ function handleCaptureCardClick(key) {
 }
 
 // -------------------------------------------------------------
-// نمایش تاخیری حرکت حریف (۲ ثانیه) قبل از حذف واقعی کارت‌ها
+// نمایش تاخیری حرکت بازیکن (۱ ثانیه) قبل از حذف واقعی کارت‌ها
 // -------------------------------------------------------------
 
 let lastMoveSequenceShown; // undefined یعنی هنوز اولین رندر انجام نشده
@@ -968,34 +938,33 @@ function renderGame(state) {
             lastMoveSequenceShown = lastMove ? lastMove.sequence : null;
             renderTrickArea(round.table_cards || []);
         } else if (Date.now() < revealHoldUntil) {
-            // در حال نمایش حرکت قبلی حریفیم؛ فعلاً دست به زمین نزن،
+            // در حال نمایش حرکت قبلی؛ فعلاً دست به زمین نزن،
             // setTimeout قبلی خودش زمین رو به‌روز می‌کنه.
         } else if (
             lastMove &&
-            lastMove.sequence !== lastMoveSequenceShown &&
-            lastMove.player_id !== userId
+            lastMove.sequence !== lastMoveSequenceShown
         ) {
-            // حریف تازه یه کارت بازی کرده: قبل از حذف، ۲ ثانیه نشونش بده
+            // یه کارت تازه بازی شده (توسط هرکدوم از دو بازیکن): برای
+            // ۱ ثانیه دور همون کارت آبی میشه تا معلوم باشه چی انداخته شد،
+            // و اگه چیزی جمع کرده، قبل از حذف واقعی ۱ ثانیه رو زمین می‌مونه.
             lastMoveSequenceShown = lastMove.sequence;
 
             const captured = lastMove.captured || [];
             let tableToShow = round.table_cards || [];
-            let highlightKeys;
 
             if (captured.length > 0) {
                 tableToShow = tableToShow.concat(captured);
-                highlightKeys = keysOf(captured);
-            } else {
-                highlightKeys = [cardKey(lastMove.played_card)];
             }
+
+            const highlightKeys = [cardKey(lastMove.played_card)];
 
             renderTrickArea(tableToShow, { capturingKeys: highlightKeys });
 
-            revealHoldUntil = Date.now() + 2000;
+            revealHoldUntil = Date.now() + 1000;
             clearTimeout(pendingRevealTimeout);
             pendingRevealTimeout = setTimeout(() => {
                 renderTrickArea(round.table_cards || []);
-            }, 2000);
+            }, 1000);
         } else {
             if (lastMove) {
                 lastMoveSequenceShown = lastMove.sequence;
@@ -1019,7 +988,8 @@ function renderGame(state) {
         handDiv.appendChild(div);
     });
 }
-    let isSubmittingMove = false;
+
+let isSubmittingMove = false;
 
 async function chooseCaptureOption(optionId) {
     if (isSubmittingMove) return;
