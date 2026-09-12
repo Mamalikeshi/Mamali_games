@@ -243,10 +243,25 @@ def resolve_move(
                 sweep_targets,
             )
 
+            is_sour = len(remaining) == 0
+
+            # -----------------------------------------------
+            # سور ۱۰ امتیازی فقط وقتی حساب میشه که زمین دقیقاً
+            # یک سرباز تنها داشته باشه (نه چند کارت دیگه) و
+            # همون یکی جمع بشه. جمع کردن چند کارت با سرباز
+            # (حتی اگه کل زمین خالی بشه) سور عادی ۵ امتیازیه.
+            # -----------------------------------------------
+
+            is_jack_sweep = (
+                is_sour
+                and len(sweep_targets) == 1
+                and sweep_targets[0].rank == "J"
+            )
+
             return {
                 "captured": sweep_targets + [played_card],
-                "is_jack_sweep": True,
-                "is_sour": len(remaining) == 0,
+                "is_jack_sweep": is_jack_sweep,
+                "is_sour": is_sour,
                 "remaining_table": remaining,
                 "requires_selection": False,
                 "capture_options": [],
