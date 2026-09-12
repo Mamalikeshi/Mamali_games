@@ -10,8 +10,7 @@ from games.chahar_barg.card import Card
 
 TARGET_SUM = 11
 
-SOUR_NORMAL_POINTS = 5
-SOUR_JACK_POINTS = 10
+SOUR_POINTS = 5
 
 SOUR_DISABLE_THRESHOLD = 50
 MATCH_TARGET_SCORE = 62
@@ -243,25 +242,15 @@ def resolve_move(
                 sweep_targets,
             )
 
-            is_sour = len(remaining) == 0
-
             # -----------------------------------------------
-            # سور ۱۰ امتیازی فقط وقتی حساب میشه که زمین دقیقاً
-            # یک سرباز تنها داشته باشه (نه چند کارت دیگه) و
-            # همون یکی جمع بشه. جمع کردن چند کارت با سرباز
-            # (حتی اگه کل زمین خالی بشه) سور عادی ۵ امتیازیه.
+            # سرباز اصلاً سور حساب نمیشه - نه ۵ امتیازی و نه
+            # ۱۰ امتیازی - حتی اگه کل زمین رو جمع کنه.
             # -----------------------------------------------
-
-            is_jack_sweep = (
-                is_sour
-                and len(sweep_targets) == 1
-                and sweep_targets[0].rank == "J"
-            )
 
             return {
                 "captured": sweep_targets + [played_card],
-                "is_jack_sweep": is_jack_sweep,
-                "is_sour": is_sour,
+                "is_jack_sweep": False,
+                "is_sour": False,
                 "remaining_table": remaining,
                 "requires_selection": False,
                 "capture_options": [],
