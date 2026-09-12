@@ -26,8 +26,7 @@ from games.chahar_barg.rules import (
     apply_capture_option,
     tally_round_score,
     count_clubs,
-    SOUR_NORMAL_POINTS,
-    SOUR_JACK_POINTS,
+    SOUR_POINTS,
     SOUR_DISABLE_THRESHOLD,
     MATCH_TARGET_SCORE,
 )
@@ -466,11 +465,7 @@ class ChaharBargGame:
                 and not self.state.is_final_deal
             ):
 
-                points = (
-                    SOUR_JACK_POINTS
-                    if result["is_jack_sweep"]
-                    else SOUR_NORMAL_POINTS
-                )
+                points = SOUR_POINTS
 
                 # -----------------------------------------------
                 # شکستن سور حریف:
@@ -717,7 +712,8 @@ class ChaharBargGame:
 
         self.last_round_summary = {
             "round_number": self.round_number,
-      "round_points": dict(
+
+            "round_points": dict(
                 round_points
             ),
 
