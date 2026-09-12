@@ -108,6 +108,10 @@
             box-shadow: 0 0 0 3px #2f80ed, 0 2px 4px rgba(0,0,0,0.5);
         }
 
+        .card.picked-up{
+            box-shadow: 0 0 0 3px #f2d94e, 0 2px 4px rgba(0,0,0,0.5);
+        }
+
         .card.selectable{
             box-shadow: 0 0 0 3px #4ade80, 0 2px 4px rgba(0,0,0,0.5);
             cursor:pointer;
@@ -364,7 +368,8 @@ const SUIT_SYMBOLS = {
     clubs: "♣️",
     spades: "♠️",
 };
-    const SUIT_TEXT = {
+
+const SUIT_TEXT = {
     hearts: "♥",
     diamonds: "♦",
     clubs: "♣",
@@ -697,7 +702,8 @@ function cardLabel(card) {
 // نگه‌داشتن المان‌های زمین بین رفرش‌ها، تا کارت‌هایی که قبلاً روی
 // زمین بودن دوباره ساخته و انیمیشن نشن (باعث لرزیدن می‌شد).
 let trickCardElements = {};
-    function cardKey(card) {
+
+function cardKey(card) {
     return card.rank + "_" + card.suit;
 }
 
@@ -716,10 +722,11 @@ function isSupersetCompatible(optionKeys, selection) {
     return selection.every((k) => s.has(k));
 }
 
-// options: { capturingKeys, selectableKeys, selectedKeys, onCardClick }
+// options: { capturingKeys, pickedUpKeys, selectableKeys, selectedKeys, onCardClick }
 function renderTrickArea(tableCards, options) {
     options = options || {};
     const capturingKeys = new Set(options.capturingKeys || []);
+    const pickedUpKeys = new Set(options.pickedUpKeys || []);
     const selectableKeys = new Set(options.selectableKeys || []);
     const selectedKeys = new Set(options.selectedKeys || []);
     const onCardClick = options.onCardClick || null;
@@ -753,6 +760,7 @@ function renderTrickArea(tableCards, options) {
         const el = trickCardElements[key];
 
         el.classList.toggle("capturing", capturingKeys.has(key));
+        el.classList.toggle("picked-up", pickedUpKeys.has(key));
         el.classList.toggle("selectable", selectableKeys.has(key));
         el.classList.toggle("selected", selectedKeys.has(key));
 
@@ -956,9 +964,14 @@ function renderGame(state) {
                 tableToShow = tableToShow.concat(captured);
             }
 
-            const highlightKeys = [cardKey(lastMove.played_card)];
+            const playedKey = cardKey(lastMove.played_card);
+            const highlightKeys = [playedKey];
+            const pickedUpKeys = keysOf(captured).filter((k) => k !== playedKey);
 
-            renderTrickArea(tableToShow, { capturingKeys: highlightKeys });
+            renderTrickArea(tableToShow, {
+                capturingKeys: highlightKeys,
+                pickedUpKeys: pickedUpKeys,
+            });
 
             revealHoldUntil = Date.now() + 1000;
             clearTimeout(pendingRevealTimeout);
