@@ -37,12 +37,20 @@ router = APIRouter(
 rooms: dict[str, Room] = {}
 games: dict[str, DominoGame] = {}
 
+# آخرین اتاقی که هر کاربر توش بوده (برای پیدا کردن حریف تصادفی و برگشت به بازی)
+active_room_by_user: dict[int, str] = {}
+
 
 # =========================================================
 # Request models
 # =========================================================
 
 class CreateRoomRequest(BaseModel):
+    user_id: int
+    username: str
+
+
+class MatchmakingRequest(BaseModel):
     user_id: int
     username: str
 
@@ -664,4 +672,60 @@ def get_score(
             game.match_finished,
         "match_winner":
             game.match_winner,
+    }
+
+
+# =========================================================
+# پیدا کردن حریف تصادفی (بدون کد اتاق)
+# =========================================================
+
+@router.post("/matchmaking/find")
+def matchmaking_find(request: MatchmakingRequest):
+    from api.domino_matchmaking import find_match
+
+    result = find_match(
+        request.user_id,
+        request.username,
+    )
+
+    return {
+        "success": True,
+        **result,
+    }
+
+
+@router.post("/matchmaking/cancel")
+def matchmaking_cancel(request: MatchmakingRequest):
+    from api.domino_matchmaking import cancel_matchmaking
+
+    cancel_matchmaking(request.user_id)
+
+    return {
+        "success": True,
+    }
+
+
+@router.get("/room/my-active/{user_id}")
+def get_my_active_room(user_id: int):
+
+    room_id = active_room_by_user.get(user_id)
+
+    if room_id is None:
+        return {
+            "success": True,
+            "room_id": None,
+        }
+
+    room = rooms.get(room_id)
+
+    if room is None:
+        return {
+            "success": True,
+            "room_id": None,
+        }
+
+    return {
+        "success": True,
+        "room_id": room_id,
+        "room": room.to_dict(),
     }
