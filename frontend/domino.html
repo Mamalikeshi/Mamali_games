@@ -7,7 +7,7 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     >
 
-    <title>مامالی گیمز - دومینو</title>
+    <title>mamali games - domino</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -135,6 +135,7 @@
         .player-name {
             font-weight: bold;
             margin-bottom: 6px;
+            font-size: 14px;
             word-break: break-word;
         }
 
@@ -174,11 +175,9 @@
 
         .score-name {
             color: #b8cfdb;
-            font-size: 12px;
+            font-size: 13px;
             margin-bottom: 4px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            word-break: break-word;
         }
 
         .score-number {
@@ -215,51 +214,56 @@
         }
 
         .board {
-            min-height: 210px;
+            min-height: 230px;
             background:
-                linear-gradient(135deg, rgba(255,255,255,.04), rgba(0,0,0,.15));
-            border: 2px solid rgba(255,255,255,.08);
-            border-radius: 18px;
-            padding: 15px;
+                radial-gradient(ellipse at center, #1f7a4d 0%, #145a38 55%, #0d3f27 100%);
+            border: 9px solid #5a3a20;
+            box-shadow:
+                inset 0 0 30px rgba(0,0,0,0.5),
+                0 6px 18px rgba(0,0,0,0.5);
+            border-radius: 22px;
+            padding: 18px 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 5px;
+            gap: 8px;
             overflow: hidden;
         }
 
         .board-empty {
-            color: #7f9aa8;
+            color: #d7f2e2;
             font-size: 13px;
         }
 
         .tile {
-            width: 62px;
-            height: 34px;
-            background: #f4f0df;
+            width: 78px;
+            height: 42px;
+            background: linear-gradient(145deg, #ffffff, #f2efe8);
             color: #151515;
-            border-radius: 6px;
+            border-radius: 8px;
             display: flex;
             flex-direction: row;
             align-items: center;
             justify-content: space-around;
-            box-shadow: 0 3px 7px rgba(0,0,0,.3);
+            box-shadow: 0 3px 7px rgba(0,0,0,.4);
             font-weight: bold;
+            font-size: 16px;
             direction: ltr;
             user-select: none;
+            border: 1px solid rgba(0,0,0,0.15);
         }
 
         .tile.vertical {
-            width: 34px;
-            height: 62px;
+            width: 42px;
+            height: 78px;
             flex-direction: column;
         }
 
         .tile-half {
             width: 50%;
             text-align: center;
-            font-size: 14px;
+            font-size: 17px;
         }
 
         .tile-divider {
@@ -284,12 +288,12 @@
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
         }
 
         .hand .tile {
-            width: 66px;
-            height: 38px;
+            width: 84px;
+            height: 46px;
             cursor: pointer;
             transition: .15s;
         }
@@ -308,14 +312,14 @@
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 5px;
+            gap: 6px;
             margin: 8px 0 13px;
         }
 
         .back-tile {
-            width: 31px;
-            height: 42px;
-            border-radius: 5px;
+            width: 38px;
+            height: 52px;
+            border-radius: 6px;
             background:
                 repeating-linear-gradient(
                     45deg,
@@ -430,7 +434,7 @@
         @media (max-width: 390px) {
             .tile,
             .hand .tile {
-                width: 58px;
+                width: 72px;
             }
 
             .players {
@@ -456,43 +460,20 @@
     <section id="lobby">
 
         <div class="card">
-            <h3>🎮 ساخت اتاق</h3>
 
             <input
-                id="createUsername"
+                id="username"
                 class="input"
                 type="text"
-                placeholder="نام شما"
-                maxlength="30"
+                placeholder="اسمت رو بنویس"
+                maxlength="20"
             >
 
-            <button class="btn" onclick="createRoom()">
-                ساخت اتاق جدید
+            <button class="btn" onclick="findRandomMatch()">
+                🎲 پیدا کردن حریف
             </button>
-        </div>
 
-        <div class="card">
-            <h3>🚪 ورود به اتاق</h3>
-
-            <input
-                id="joinRoomId"
-                class="input"
-                type="text"
-                placeholder="کد اتاق"
-                maxlength="50"
-            >
-
-            <input
-                id="joinUsername"
-                class="input"
-                type="text"
-                placeholder="نام شما"
-                maxlength="30"
-            >
-
-            <button class="btn secondary" onclick="joinRoom()">
-                ورود به اتاق
-            </button>
+            <div class="status" id="matchmaking-status"></div>
         </div>
 
     </section>
@@ -504,14 +485,6 @@
 
             <div class="status">
                 منتظر بازیکن دوم هستیم...
-            </div>
-
-            <div class="room-code" id="roomCode">
-                -
-            </div>
-
-            <div class="small">
-                کد اتاق را برای بازیکن دوم ارسال کنید.
             </div>
 
         </div>
@@ -807,13 +780,9 @@
 
         if (!id) {
 
-            id =
-                "guest_" +
-                Date.now() +
-                "_" +
-                Math.random()
-                    .toString(36)
-                    .substring(2, 9);
+            id = String(
+                Math.floor(Math.random() * 1000000000)
+            );
 
             localStorage.setItem(
                 "domino_guest_id",
@@ -834,7 +803,7 @@
 
         if (telegramUser) {
 
-            userId = String(telegramUser.id);
+            userId = parseInt(telegramUser.id);
 
             username =
                 telegramUser.first_name ||
@@ -843,17 +812,13 @@
 
         } else {
 
-            userId = guestId();
+            userId = parseInt(guestId());
 
             username = "بازیکن مهمان";
         }
 
         document.getElementById(
-            "createUsername"
-        ).value = username;
-
-        document.getElementById(
-            "joinUsername"
+            "username"
         ).value = username;
     }
 
@@ -956,14 +921,13 @@
 
 
     /*
-     * ساخت اتاق
+     * پیدا کردن حریف تصادفی
      */
-    async function createRoom() {
+    let matchmakingTimer = null;
 
-        const input =
-            document.getElementById(
-                "createUsername"
-            );
+    async function findRandomMatch() {
+
+        const input = document.getElementById("username");
 
         const name =
             input.value.trim() ||
@@ -972,99 +936,26 @@
 
         username = name;
 
-        try {
+        document.getElementById(
+            "matchmaking-status"
+        ).innerText = "در حال جستجوی حریف...";
 
-            const data =
-                await apiRequest(
-                    `${API}/rooms`,
-                    {
-                        method: "POST",
+        clearInterval(matchmakingTimer);
 
-                        body: JSON.stringify({
-                            user_id: userId,
-                            username: username
-                        })
-                    }
-                );
+        matchmakingTimer = setInterval(
+            pollMatchmaking,
+            2000
+        );
 
-            roomId =
-                String(
-                    data.room_id ||
-                    data.id
-                );
-
-            if (!roomId) {
-                throw new Error(
-                    "کد اتاق دریافت نشد"
-                );
-            }
-
-            localStorage.setItem(
-                "domino_room_id",
-                roomId
-            );
-
-            showScreen("waiting");
-
-            startRoomPolling();
-
-            await refreshRoom();
-
-            showMessage(
-                "اتاق با موفقیت ساخته شد.",
-                "success"
-            );
-
-        } catch (error) {
-
-            showMessage(
-                error.message,
-                "error"
-            );
-        }
+        pollMatchmaking();
     }
 
-
-    /*
-     * ورود به اتاق
-     */
-    async function joinRoom() {
-
-        const roomInput =
-            document.getElementById(
-                "joinRoomId"
-            );
-
-        const nameInput =
-            document.getElementById(
-                "joinUsername"
-            );
-
-        const id =
-            roomInput.value.trim();
-
-        const name =
-            nameInput.value.trim() ||
-            username ||
-            "بازیکن";
-
-        if (!id) {
-
-            showMessage(
-                "کد اتاق را وارد کنید.",
-                "error"
-            );
-
-            return;
-        }
-
-        roomId = id;
-        username = name;
+    async function pollMatchmaking() {
 
         try {
 
-            await apiRequest(
-                `${API}/rooms/${encodeURIComponent(roomId)}/join`,
+            const data = await apiRequest(
+                `${API}/matchmaking/find`,
                 {
                     method: "POST",
 
@@ -1075,28 +966,31 @@
                 }
             );
 
-            localStorage.setItem(
-                "domino_room_id",
-                roomId
-            );
+            if (data.matched) {
 
-            showScreen("waiting");
+                clearInterval(matchmakingTimer);
 
-            startRoomPolling();
+                roomId = String(data.room_id);
 
-            await refreshRoom();
+                localStorage.setItem(
+                    "domino_room_id",
+                    roomId
+                );
 
-            showMessage(
-                "با موفقیت وارد اتاق شدید.",
-                "success"
-            );
+                showScreen("waiting");
+
+                startRoomPolling();
+
+                await refreshRoom();
+            }
 
         } catch (error) {
 
-            showMessage(
-                error.message,
-                "error"
-            );
+            clearInterval(matchmakingTimer);
+
+            document.getElementById(
+                "matchmaking-status"
+            ).innerText = "❌ " + error.message;
         }
     }
 
@@ -1153,13 +1047,6 @@
      * نمایش اتاق
      */
     function renderWaitingRoom(data) {
-
-        document.getElementById(
-            "roomCode"
-        ).textContent =
-            data.room_id ||
-            roomId ||
-            "-";
 
         const players =
             Array.isArray(data.players)
