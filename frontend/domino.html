@@ -7,7 +7,7 @@
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     >
 
-    <title>mamali games - domino</title>
+    <title>دومینو</title>
 
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
@@ -37,9 +37,29 @@
             padding: 14px;
         }
 
+        .back-link {
+            position: fixed;
+            top: 14px;
+            right: 16px;
+            font-size: 13px;
+            color: #b9d2df;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .sound-toggle {
+            position: fixed;
+            top: 10px;
+            left: 16px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 50;
+        }
+
         .header {
             text-align: center;
             margin-bottom: 14px;
+            padding-top: 26px;
         }
 
         .header h1 {
@@ -446,10 +466,14 @@
 
 <body>
 
+<div class="back-link" onclick="window.location.href='index.html'">⬅️ بازگشت به منو</div>
+
+<div class="sound-toggle" id="sound-toggle" onclick="toggleSound()">🔊</div>
+
 <div class="container">
 
     <div class="header">
-        <h1>🎲 مامالی گیمز</h1>
+        <h1>🎲 دومینو</h1>
         <p>بازی دومینو — دو نفره</p>
     </div>
 
@@ -739,6 +763,7 @@
     let currentGame = null;
     let currentRoom = null;
     let currentHand = [];
+    let lastBoardTileCount = null;
 
     /*
      * Telegram
@@ -750,6 +775,52 @@
     if (tg) {
         tg.ready();
         tg.expand();
+    }
+
+
+    /*
+     * صدا
+     */
+    let soundMuted = localStorage.getItem("mamali_sound_muted") === "1";
+    document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+
+    function toggleSound() {
+        soundMuted = !soundMuted;
+        localStorage.setItem("mamali_sound_muted", soundMuted ? "1" : "0");
+        document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+    }
+
+    let sharedAudioCtx = null;
+    function getAudioCtx() {
+        if (!sharedAudioCtx) {
+            sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return sharedAudioCtx;
+    }
+
+    function playTileSound() {
+        if (soundMuted) return;
+        try {
+            const ctx = getAudioCtx();
+            const bufferSize = ctx.sampleRate * 0.12;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            }
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = "bandpass";
+            filter.frequency.value = 1800;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.35, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            noise.start();
+        } catch (e) {}
     }
 
 
@@ -1166,13 +1237,9 @@
         try {
 
             await apiRequest(
-                `${API}/rooms/${encodeURIComponent(roomId)}/ready`,
+                `${API}/rooms/${encodeURIComponent(roomId)}/ready/${encodeURIComponent(userId)}`,
                 {
-                    method: "POST",
-
-                    body: JSON.stringify({
-                        user_id: userId
-                    })
+                    method: "POST"
                 }
             );
 
@@ -1434,6 +1501,14 @@
             state.board_tiles ||
             state.board ||
             [];
+
+        if (
+            lastBoardTileCount !== null &&
+            boardTiles.length > lastBoardTileCount
+        ) {
+            playTileSound();
+        }
+        lastBoardTileCount = boardTiles.length;
 
 
         document.getElementById(
@@ -1919,13 +1994,9 @@
         try {
 
             await apiRequest(
-                `${API}/rooms/${encodeURIComponent(roomId)}/draw`,
+                `${API}/rooms/${encodeURIComponent(roomId)}/draw/${encodeURIComponent(userId)}`,
                 {
-                    method: "POST",
-
-                    body: JSON.stringify({
-                        user_id: userId
-                    })
+                    method: "POST"
                 }
             );
 
@@ -1954,13 +2025,9 @@
         try {
 
             await apiRequest(
-                `${API}/rooms/${encodeURIComponent(roomId)}/pass`,
+                `${API}/rooms/${encodeURIComponent(roomId)}/pass/${encodeURIComponent(userId)}`,
                 {
-                    method: "POST",
-
-                    body: JSON.stringify({
-                        user_id: userId
-                    })
+                    method: "POST"
                 }
             );
 
