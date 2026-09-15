@@ -320,6 +320,11 @@ def ready_player(
             detail="Player not found in room.",
         )
 
+    existing_game = games.get(room_id)
+
+    if existing_game is not None:
+        existing_game.touch_presence(user_id)
+
     if not hasattr(
         player,
         "is_ready",
@@ -396,9 +401,13 @@ def start_game(
 )
 def get_game(
     room_id: str,
+    user_id: int | None = None,
 ):
 
     game = _get_game(room_id)
+
+    if user_id is not None:
+        game.touch_presence(user_id)
 
     return {
         "room_id": room_id,
@@ -419,6 +428,8 @@ def play_tile(
 ):
 
     game = _get_game(room_id)
+
+    game.touch_presence(request.user_id)
 
     success = game.play_tile(
         user_id=request.user_id,
@@ -456,6 +467,8 @@ def draw_tile(
 
     game = _get_game(room_id)
 
+    game.touch_presence(user_id)
+
     tile = game.draw_tile(
         user_id
     )
@@ -492,6 +505,8 @@ def pass_turn(
 ):
 
     game = _get_game(room_id)
+
+    game.touch_presence(user_id)
 
     success = game.pass_turn(
         user_id
@@ -574,6 +589,8 @@ def get_player_hand(
 
     game = _get_game(room_id)
 
+    game.touch_presence(user_id)
+
     player = game.get_player(
         user_id
     )
@@ -607,6 +624,8 @@ def get_playable_tiles(
 ):
 
     game = _get_game(room_id)
+
+    game.touch_presence(user_id)
 
     player = game.get_player(
         user_id
