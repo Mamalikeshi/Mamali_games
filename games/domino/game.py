@@ -21,6 +21,9 @@ Match:
 - A player reaching MATCH_TARGET_SCORE wins the match.
 """
 
+import random
+import time
+
 from games.domino.deck import Deck
 from games.domino.player import Player
 from games.domino.room import Room
@@ -29,7 +32,14 @@ from games.domino.tile import Tile
 from games.domino.rules import (
     MATCH_TARGET_SCORE,
     TILES_PER_PLAYER,
+    valid_sides_for_tile,
 )
+
+# بعد از این همه ثانیه بی‌تحرکی در نوبت، حرکت به‌صورت خودکار انجام می‌شود
+TURN_TIMEOUT_SECONDS = 20.0
+
+# اگر بازیکنی برای این همه ثانیه هیچ درخواستی نفرستد، غایب محسوب می‌شود
+DISCONNECT_TIMEOUT_SECONDS = 60.0
 
 
 class DominoGame:
@@ -61,9 +71,38 @@ class DominoGame:
 
         self.last_round_summary: dict | None = None
 
+        # =====================================================
+        # حضور بازیکنان (برای تشخیص قطع ارتباط)
+        # =====================================================
+
+        self.last_seen: dict[int, float] = {}
+
+        self.forfeit: bool = False
+        self.forfeit_reason: str | None = None
+
         # امتیاز کل Match
         self.player_a.score = 0
         self.player_b.score = 0
+
+    # =========================================================
+    # تنظیم نوبت + ریست تایمر
+    # =========================================================
+
+    def _set_turn(self, user_id: int | None):
+
+        if self.state is None:
+            return
+
+        self.state.current_turn = user_id
+        self.state.turn_started_at = time.time()
+
+    # =========================================================
+    # ثبت حضور بازیکن (heartbeat)
+    # =========================================================
+
+    def touch_presence(self, user_id: int):
+
+        self.last_seen[user_id] = time.time()
 
     # =========================================================
     # شروع Match
@@ -112,7 +151,7 @@ class DominoGame:
 
         starter = self._choose_starter()
 
-        self.state.current_turn = starter
+        self._set_turn(starter)
 
         return True
 
@@ -475,15 +514,19 @@ class DominoGame:
 
             player.remove_from_hand(tile)
 
+            if left == left_end:
+                new_left_end = right
+                oriented = Tile(right, left)
+            else:
+                new_left_end = left
+                oriented = Tile(left, right)
+
             self.state.board_tiles.insert(
                 0,
-                tile,
+                oriented,
             )
 
-            if left == left_end:
-                self.state.left_end = right
-            else:
-                self.state.left_end = left
+            self.state.left_end = new_left_end
 
             return True
 
@@ -492,12 +535,16 @@ class DominoGame:
 
             player.remove_from_hand(tile)
 
-            self.state.board_tiles.append(tile)
-
             if left == right_end:
-                self.state.right_end = right
+                new_right_end = right
+                oriented = Tile(left, right)
             else:
-                self.state.right_end = left
+                new_right_end = left
+                oriented = Tile(right, left)
+
+            self.state.board_tiles.append(oriented)
+
+            self.state.right_end = new_right_end
 
             return True
 
@@ -548,6 +595,9 @@ class DominoGame:
 
         player.add_to_hand([tile])
 
+        # خرید مهره یک اقدام واقعی است، پس تایمر نوبت ریست می‌شود
+        self.state.turn_started_at = time.time()
+
         return tile
 
     # =========================================================
@@ -591,7 +641,7 @@ class DominoGame:
 
             return True
 
-        self.state.current_turn = (
+        self._set_turn(
             self._other_player(user_id).user_id
         )
 
@@ -619,7 +669,7 @@ class DominoGame:
 
             return
 
-        self.state.current_turn = (
+        self._set_turn(
             self._other_player(user_id).user_id
         )
 
@@ -784,6 +834,159 @@ class DominoGame:
             )
 
     # =========================================================
+    # تایمر نوبت: اگر ۲۰ ثانیه حرکتی نشد، خودکار بازی کن
+    # =========================================================
+
+    def check_turn_timeout(
+        self,
+        timeout_seconds: float = TURN_TIMEOUT_SECONDS,
+    ) -> bool:
+
+        if self.match_finished:
+            return False
+
+        if self.round_finished:
+            return False
+
+        if self.state is None:
+            return False
+
+        user_id = self.state.current_turn
+
+        if user_id is None:
+            return False
+
+        started = self.state.turn_started_at
+
+        if started is None:
+            return False
+
+        if (time.time() - started) < timeout_seconds:
+            return False
+
+        return self._auto_play_for(user_id)
+
+    def _auto_play_for(self, user_id: int) -> bool:
+
+        player = self.get_player(user_id)
+
+        if player is None:
+            return False
+
+        playable = self.get_playable_tiles(user_id)
+
+        if playable:
+
+            self._auto_play_tile(user_id, player, playable)
+
+            return True
+
+        # اگر مهره‌ی قابل‌بازی ندارد، در صورت امکان خودکار بکشد
+        if self.deck is not None and not self.deck.is_empty():
+
+            self.draw_tile(user_id)
+
+            playable_after = self.get_playable_tiles(user_id)
+
+            if playable_after:
+
+                self._auto_play_tile(
+                    user_id, player, playable_after
+                )
+
+            else:
+
+                self.pass_turn(user_id)
+
+            return True
+
+        # نه مهره قابل‌بازی، نه مهره‌ای برای کشیدن → پاس
+        self.pass_turn(user_id)
+
+        return True
+
+    def _auto_play_tile(
+        self,
+        user_id: int,
+        player: Player,
+        playable: list[Tile],
+    ):
+
+        tile = random.choice(playable)
+
+        try:
+            index = player.hand.index(tile)
+        except ValueError:
+            return
+
+        sides = valid_sides_for_tile(
+            tile,
+            self.state.left_end,
+            self.state.right_end,
+        )
+
+        side = random.choice(sides) if sides else None
+
+        self.play_tile(user_id, index, side)
+
+    # =========================================================
+    # قطع ارتباط: اگر ۶۰ ثانیه یک بازیکن هیچ درخواستی نفرستد
+    # و حریف در همین بازه فعال باشد، حریف برنده اعلام می‌شود
+    # =========================================================
+
+    def check_disconnect_forfeit(
+        self,
+        timeout_seconds: float = DISCONNECT_TIMEOUT_SECONDS,
+    ) -> bool:
+
+        if self.match_finished:
+            return False
+
+        if self.state is None:
+            return False
+
+        ids = [
+            self.player_a.user_id,
+            self.player_b.user_id,
+        ]
+
+        if not all(uid in self.last_seen for uid in ids):
+            return False
+
+        now = time.time()
+
+        a_gap = now - self.last_seen[self.player_a.user_id]
+        b_gap = now - self.last_seen[self.player_b.user_id]
+
+        if a_gap > timeout_seconds and b_gap <= 15:
+
+            self._declare_forfeit(
+                winner_id=self.player_b.user_id,
+            )
+
+            return True
+
+        if b_gap > timeout_seconds and a_gap <= 15:
+
+            self._declare_forfeit(
+                winner_id=self.player_a.user_id,
+            )
+
+            return True
+
+        return False
+
+    def _declare_forfeit(self, winner_id: int):
+
+        self.match_finished = True
+        self.match_winner = winner_id
+
+        self.round_finished = True
+
+        self.forfeit = True
+        self.forfeit_reason = "opponent_disconnected"
+
+    # =========================================================
     # امتیازات Match
     # =========================================================
 
@@ -802,6 +1005,10 @@ class DominoGame:
     # =========================================================
 
     def get_state(self) -> dict:
+
+        # هر بار وضعیت خوانده می‌شود، تایمرها بررسی می‌شوند
+        self.check_turn_timeout()
+        self.check_disconnect_forfeit()
 
         if self.state is None:
 
@@ -839,6 +1046,15 @@ class DominoGame:
 
                 "last_round_summary":
                     self.last_round_summary,
+
+                "forfeit":
+                    self.forfeit,
+
+                "forfeit_reason":
+                    self.forfeit_reason,
+
+                "turn_timeout_seconds":
+                    TURN_TIMEOUT_SECONDS,
             }
 
         return {
@@ -881,6 +1097,15 @@ class DominoGame:
 
             "last_round_summary":
                 self.last_round_summary,
+
+            "forfeit":
+                self.forfeit,
+
+            "forfeit_reason":
+                self.forfeit_reason,
+
+            "turn_timeout_seconds":
+                TURN_TIMEOUT_SECONDS,
         }
 
     # =========================================================
