@@ -179,6 +179,23 @@
             font-size: 13px;
         }
 
+        .turn-timer {
+            display: inline-block;
+            margin-right: 8px;
+            font-weight: bold;
+            color: #7ec8e3;
+        }
+
+        .turn-timer.urgent {
+            color: #ff6b5b;
+            animation: pulse-timer 0.6s infinite;
+        }
+
+        @keyframes pulse-timer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .4; }
+        }
+
         .scores {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -234,20 +251,20 @@
         }
 
         .board {
-            min-height: 190px;
+            min-height: 150px;
             background:
                 radial-gradient(ellipse at center, #1f7a4d 0%, #145a38 55%, #0d3f27 100%);
-            border: 9px solid #5a3a20;
+            border: 8px solid #5a3a20;
             box-shadow:
                 inset 0 0 30px rgba(0,0,0,0.5),
                 0 6px 18px rgba(0,0,0,0.5);
-            border-radius: 22px;
-            padding: 18px 12px;
+            border-radius: 20px;
+            padding: 14px 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 5px;
             overflow: hidden;
         }
 
@@ -257,27 +274,40 @@
         }
 
         .tile {
-            width: 80px;
-            height: 46px;
+            width: 60px;
+            height: 34px;
             background: linear-gradient(145deg, #ffffff, #f2efe8);
             color: #151515;
-            border-radius: 8px;
+            border-radius: 7px;
             display: flex;
             flex-direction: row;
             align-items: stretch;
             justify-content: space-around;
             box-shadow: 0 3px 7px rgba(0,0,0,.4);
-            font-weight: bold;
-            font-size: 16px;
             direction: ltr;
             user-select: none;
             border: 1px solid rgba(0,0,0,0.15);
+            flex-shrink: 0;
         }
 
         .tile.vertical {
-            width: 46px;
-            height: 80px;
             flex-direction: column;
+        }
+
+        .tile.vertical:not(.board-tile) {
+            width: 34px;
+            height: 60px;
+        }
+
+        .board-tile {
+            width: 42px;
+            height: 24px;
+            border-radius: 5px;
+        }
+
+        .board-tile.vertical {
+            width: 24px;
+            height: 42px;
         }
 
         .tile-half {
@@ -286,8 +316,7 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            gap: 2px;
-            padding: 5px 6px;
+            padding: 10%;
         }
 
         .tile.vertical .tile-half {
@@ -296,10 +325,8 @@
         }
 
         .pip {
-            width: 100%;
-            height: 100%;
-            max-width: 9px;
-            max-height: 9px;
+            width: 68%;
+            height: 68%;
             margin: auto;
             border-radius: 50%;
             box-shadow: inset 0 -1px 1px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.25);
@@ -326,7 +353,7 @@
         }
 
         .hand .tile.selected {
-            transform: translateY(-8px);
+            transform: translateY(-6px);
             outline: 3px solid #29a9ea;
             box-shadow: 0 7px 15px rgba(0,0,0,.35);
         }
@@ -360,34 +387,22 @@
         }
 
         .hand-card-spacer {
-            height: 225px;
+            height: 250px;
         }
 
         .hand {
             display: flex;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            justify-content: flex-start;
-            gap: 10px;
-            padding: 2px 2px 8px;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .hand::-webkit-scrollbar {
-            height: 5px;
-        }
-
-        .hand::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,.25);
-            border-radius: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            padding: 2px 2px 4px;
         }
 
         .hand .tile {
-            width: 86px;
-            height: 50px;
+            width: 58px;
+            height: 34px;
             cursor: pointer;
             transition: .15s;
-            flex: 0 0 auto;
         }
 
         .back-tile {
@@ -505,10 +520,20 @@
             margin-top: 8px;
         }
 
-        @media (max-width: 390px) {
-            .tile,
+        @media (max-width: 350px) {
+            .board-tile {
+                width: 36px;
+                height: 20px;
+            }
+
+            .board-tile.vertical {
+                width: 20px;
+                height: 36px;
+            }
+
             .hand .tile {
-                width: 72px;
+                width: 50px;
+                height: 30px;
             }
 
             .players {
@@ -652,7 +677,8 @@
             </div>
 
             <div id="turnStatus" class="status">
-                در حال بارگذاری...
+                <span id="turnStatusText">در حال بارگذاری...</span>
+                <span id="turnTimerText" class="turn-timer"></span>
             </div>
 
         </div>
@@ -703,7 +729,7 @@
                     -
                 </div>
 
-                <p>
+                <p id="finalMessage">
                     مسابقه به پایان رسید.
                 </p>
 
@@ -1422,7 +1448,7 @@
 
             const data =
                 await apiRequest(
-                    `${API}/rooms/${encodeURIComponent(roomId)}/game`
+                    `${API}/rooms/${encodeURIComponent(roomId)}/game?user_id=${encodeURIComponent(userId)}`
                 );
 
             currentGame =
@@ -1625,7 +1651,9 @@
             board.appendChild(
                 createTileElement(
                     tile,
-                    false
+                    false,
+                    null,
+                    true
                 )
             );
         });
@@ -1646,12 +1674,12 @@
     };
 
     const PIP_COLORS = {
-        1: "#3d7fc4",
-        2: "#2f6b3e",
-        3: "#c0435a",
-        4: "#57564c",
-        5: "#a8422e",
-        6: "#e0a83c"
+        1: "#7ec8e3",
+        2: "#4caf50",
+        3: "#e53935",
+        4: "#757575",
+        5: "#1565c0",
+        6: "#fbc02d"
     };
 
     function buildTileHalf(value) {
@@ -1690,7 +1718,8 @@
     function createTileElement(
         tile,
         clickable = false,
-        index = null
+        index = null,
+        onBoard = false
     ) {
 
         const div =
@@ -1713,6 +1742,25 @@
 
         const right =
             tile.right ?? 0;
+
+        const isDouble =
+            tile.is_double === true ||
+            left === right;
+
+        /*
+         * روی زمین بازی، مهره‌های جفتی (دوبل) عمود
+         * روی بقیه‌ی زنجیره چیده می‌شن؛ دقیقاً مثل
+         * دومینوی واقعی
+         */
+        if (onBoard && isDouble) {
+
+            div.classList.add("vertical");
+            div.classList.add("board-tile");
+
+        } else if (onBoard) {
+
+            div.classList.add("board-tile");
+        }
 
 
         div.innerHTML = "";
@@ -1957,11 +2005,17 @@
         }
 
 
+        /*
+         * از left_end / right_end واقعیِ بازی استفاده می‌کنیم
+         * (نه محاسبه‌ی دستی از آرایه‌ی مهره‌ها، چون جهت مهره‌ی
+         * ذخیره‌شده لزوماً با جهت نمایش یکی نیست و باعث می‌شد
+         * بعضی مهره‌ها - مخصوصاً دوبل‌ها - قابل‌بازی تشخیص داده نشن)
+         */
         const leftEnd =
-            getLeftEnd(boardTiles);
+            state.left_end;
 
         const rightEnd =
-            getRightEnd(boardTiles);
+            state.right_end;
 
 
         const canLeft =
@@ -1998,40 +2052,6 @@
                 "error"
             );
         }
-    }
-
-
-    /*
-     * انتهای چپ
-     */
-    function getLeftEnd(tiles) {
-
-        if (
-            !Array.isArray(tiles) ||
-            tiles.length === 0
-        ) {
-            return null;
-        }
-
-        return tiles[0].left;
-    }
-
-
-    /*
-     * انتهای راست
-     */
-    function getRightEnd(tiles) {
-
-        if (
-            !Array.isArray(tiles) ||
-            tiles.length === 0
-        ) {
-            return null;
-        }
-
-        return tiles[
-            tiles.length - 1
-        ].right;
     }
 
 
@@ -2163,8 +2183,11 @@
 
 
     /*
-     * نمایش نوبت
+     * نمایش نوبت + شمارش‌معکوس ۲۰ ثانیه‌ای
      */
+    let turnTimerInterval = null;
+    let turnDeadlineClientMs = null;
+
     function renderTurn(game) {
 
         const state =
@@ -2173,9 +2196,14 @@
         const turn =
             state.current_turn;
 
-        const el =
+        const textEl =
             document.getElementById(
-                "turnStatus"
+                "turnStatusText"
+            );
+
+        const timerEl =
+            document.getElementById(
+                "turnTimerText"
             );
 
 
@@ -2184,8 +2212,12 @@
             turn === undefined
         ) {
 
-            el.textContent =
+            textEl.textContent =
                 "منتظر شروع بازی...";
+
+            timerEl.textContent = "";
+
+            turnDeadlineClientMs = null;
 
             return;
         }
@@ -2196,14 +2228,98 @@
             String(userId)
         ) {
 
-            el.textContent =
+            textEl.textContent =
                 "🎯 نوبت شماست";
 
         } else {
 
-            el.textContent =
+            textEl.textContent =
                 "⏳ نوبت بازیکن مقابل است";
         }
+
+
+        /*
+         * محاسبه‌ی زمان باقی‌مانده با توجه به ساعت سرور
+         * (برای جلوگیری از خطای اختلاف ساعت دستگاه‌ها،
+         * فقط از "مدت گذشته" استفاده می‌کنیم نه زمان مطلق)
+         */
+        const timeoutSeconds =
+            state.turn_timeout_seconds ||
+            game.turn_timeout_seconds ||
+            20;
+
+        const startedAt =
+            state.turn_started_at;
+
+        if (typeof startedAt === "number") {
+
+            const elapsed =
+                (Date.now() / 1000) - startedAt;
+
+            const remaining =
+                Math.max(
+                    0,
+                    timeoutSeconds - elapsed
+                );
+
+            turnDeadlineClientMs =
+                Date.now() + remaining * 1000;
+
+        } else {
+
+            turnDeadlineClientMs = null;
+
+            timerEl.textContent = "";
+        }
+
+
+        if (!turnTimerInterval) {
+
+            turnTimerInterval =
+                setInterval(
+                    updateTurnTimerDisplay,
+                    500
+                );
+        }
+
+        updateTurnTimerDisplay();
+    }
+
+
+    function updateTurnTimerDisplay() {
+
+        const timerEl =
+            document.getElementById(
+                "turnTimerText"
+            );
+
+        if (
+            !timerEl ||
+            turnDeadlineClientMs === null
+        ) {
+
+            if (timerEl) {
+                timerEl.textContent = "";
+            }
+
+            return;
+        }
+
+        const remainingSeconds =
+            Math.max(
+                0,
+                Math.round(
+                    (turnDeadlineClientMs - Date.now()) / 1000
+                )
+            );
+
+        timerEl.textContent =
+            `⏱ ${remainingSeconds} ثانیه`;
+
+        timerEl.classList.toggle(
+            "urgent",
+            remainingSeconds <= 5
+        );
     }
 
 
@@ -2437,6 +2553,28 @@
                 "finalScore"
             ).textContent =
                 `${winnerScore} امتیاز`;
+
+            const messageEl =
+                document.getElementById(
+                    "finalMessage"
+                );
+
+            if (game.forfeit === true) {
+
+                const isMe =
+                    String(winner) ===
+                    String(userId);
+
+                messageEl.textContent =
+                    isMe
+                        ? "حریف بازی را ترک کرد و برای مدتی برنگشت — شما برنده شدید! 🎉"
+                        : "شما بازی را ترک کردید و برنگشتید، بنابراین حریف برنده اعلام شد.";
+
+            } else {
+
+                messageEl.textContent =
+                    "مسابقه به پایان رسید.";
+            }
 
             stopGamePolling();
 
