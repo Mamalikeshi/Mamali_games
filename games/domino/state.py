@@ -3,6 +3,7 @@ Round state for Domino - 2 player mode.
 Standard Double-Six Domino.
 """
 
+import time
 
 from games.domino.tile import Tile
 
@@ -32,6 +33,9 @@ class DominoState:
         # =====================================================
 
         self.current_turn: int | None = None
+
+        # زمان شروع نوبتِ فعلی (برای تایمر ۲۰ ثانیه‌ای)
+        self.turn_started_at: float = time.time()
 
         # =====================================================
         # اطلاعات حرکت
@@ -71,6 +75,8 @@ class DominoState:
             "right_end": self.right_end,
 
             "current_turn": self.current_turn,
+
+            "turn_started_at": self.turn_started_at,
 
             "last_player": self.last_player,
 
