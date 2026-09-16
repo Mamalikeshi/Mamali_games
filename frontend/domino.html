@@ -251,7 +251,7 @@
         }
 
         .board {
-            min-height: 150px;
+            height: 100px;
             background:
                 radial-gradient(ellipse at center, #1f7a4d 0%, #145a38 55%, #0d3f27 100%);
             border: 8px solid #5a3a20;
@@ -259,18 +259,40 @@
                 inset 0 0 30px rgba(0,0,0,0.5),
                 0 6px 18px rgba(0,0,0,0.5);
             border-radius: 20px;
-            padding: 14px 10px;
+            padding: 10px 14px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 5px;
-            overflow: hidden;
+            justify-content: flex-start;
+            flex-wrap: nowrap;
+            gap: 7px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            direction: ltr;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .board::-webkit-scrollbar {
+            height: 5px;
+        }
+
+        .board::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,.3);
+            border-radius: 5px;
         }
 
         .board-empty {
             color: #d7f2e2;
             font-size: 13px;
+            direction: rtl;
+            width: 100%;
+            text-align: center;
+        }
+
+        .board-hint {
+            text-align: center;
+            font-size: 11px;
+            color: #8fb0be;
+            margin-top: 6px;
         }
 
         .tile {
@@ -300,14 +322,27 @@
         }
 
         .board-tile {
-            width: 42px;
-            height: 24px;
+            width: 46px;
+            height: 27px;
             border-radius: 5px;
+            flex-shrink: 0;
         }
 
         .board-tile.vertical {
-            width: 24px;
-            height: 42px;
+            width: 27px;
+            height: 46px;
+        }
+
+        .board-tile.selectable-end {
+            outline: 3px solid #ffd23c;
+            box-shadow: 0 0 12px rgba(255,210,60,.85);
+            cursor: pointer;
+            animation: pulse-end 0.9s infinite;
+        }
+
+        @keyframes pulse-end {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
         }
 
         .tile-half {
@@ -433,17 +468,13 @@
 
         .side-selection {
             margin-top: 10px;
-            background: rgba(0,0,0,.2);
+            background: rgba(255,210,60,.15);
+            border: 1px solid rgba(255,210,60,.4);
             border-radius: 14px;
             padding: 12px;
             text-align: center;
-        }
-
-        .side-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 8px;
+            font-size: 13px;
+            color: #ffe9a8;
         }
 
         .message {
@@ -748,6 +779,10 @@
                 </div>
             </div>
 
+            <div class="board-hint">
+                ↔️ برای دیدن ادامه‌ی زنجیره، میز را به چپ و راست بکشید
+            </div>
+
         </div>
 
         <!-- دست حریف -->
@@ -775,29 +810,7 @@
             </div>
 
             <div id="sideSelection" class="side-selection hidden">
-
-                <div>
-                    این مهره را در کدام سمت قرار دهیم؟
-                </div>
-
-                <div class="side-buttons">
-
-                    <button
-                        class="btn"
-                        onclick="playSelected('left')"
-                    >
-                        ⬅️ چپ
-                    </button>
-
-                    <button
-                        class="btn"
-                        onclick="playSelected('right')"
-                    >
-                        ➡️ راست
-                    </button>
-
-                </div>
-
+                👆 مهره‌ی انتهای زمین (سمت چپ یا راست) را که چشمک می‌زند لمس کنید
             </div>
 
             <div class="actions">
@@ -1955,6 +1968,16 @@
         selectedIndex = index;
 
         document
+            .getElementById(
+                "sideSelection"
+            )
+            .classList.add(
+                "hidden"
+            );
+
+        highlightBoardEnds(false);
+
+        document
             .querySelectorAll(
                 "#hand .tile"
             )
@@ -2037,6 +2060,8 @@
                     "hidden"
                 );
 
+            highlightBoardEnds(true);
+
         } else if (canLeft) {
 
             playSelected("left");
@@ -2051,6 +2076,60 @@
                 "این مهره در حال حاضر قابل بازی نیست.",
                 "error"
             );
+        }
+    }
+
+
+    /*
+     * چشمک‌زدن دو سرِ زمین برای انتخاب مستقیم با لمس
+     * (به‌جای سؤال کردن چپ/راست)
+     */
+    function highlightBoardEnds(active) {
+
+        const board =
+            document.getElementById(
+                "board"
+            );
+
+        const tiles =
+            board.querySelectorAll(
+                ".tile"
+            );
+
+        tiles.forEach((el) => {
+
+            el.classList.remove(
+                "selectable-end"
+            );
+
+            el.onclick = null;
+        });
+
+        if (!active || tiles.length === 0) {
+            return;
+        }
+
+        const firstTile =
+            tiles[0];
+
+        const lastTile =
+            tiles[tiles.length - 1];
+
+        firstTile.classList.add(
+            "selectable-end"
+        );
+
+        firstTile.onclick = () =>
+            playSelected("left");
+
+        if (lastTile !== firstTile) {
+
+            lastTile.classList.add(
+                "selectable-end"
+            );
+
+            lastTile.onclick = () =>
+                playSelected("right");
         }
     }
 
@@ -2107,6 +2186,8 @@
                 .classList.add(
                     "hidden"
                 );
+
+            highlightBoardEnds(false);
 
             await refreshGame();
 
