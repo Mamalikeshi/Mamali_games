@@ -8,6 +8,8 @@ Responsibilities:
 - Finding legal moves
 - Moving pieces
 - Entering pieces from the yard
+- Moving through the home column
+- Finishing pieces
 - Capturing opponent pieces
 - Handling extra turns after rolling 6
 - Detecting finished players
@@ -28,15 +30,15 @@ from games.mench.board import (
     global_cell_for_step,
     is_home_column,
     is_on_track,
+    is_safe_track_cell,
 )
-from games.mench.player import Player
 from games.mench.piece import Piece
+from games.mench.player import Player
 from games.mench.rules import (
-    can_piece_move,
     can_enter_from_yard,
+    can_piece_move,
     destination_global_cell,
     is_destination_safe,
-    movable_pieces,
 )
 from games.mench.state import MenchState
 
@@ -53,14 +55,13 @@ class MenchGame:
 
     MIN_PLAYERS = 2
     MAX_PLAYERS = 4
+
     DICE_MIN = 1
     DICE_MAX = 6
+
     EXTRA_TURN_ROLL = 6
 
-    def __init__(
-        self,
-        room_id: str,
-    ):
+    def __init__(self, room_id: str):
         self.room_id = room_id
         self.state = MenchState(room_id)
 
@@ -68,13 +69,8 @@ class MenchGame:
     # Player management
     # ========================================================
 
-    def add_player(
-        self,
-        player: Player,
-    ) -> None:
-        """
-        Add a player to the game state.
-        """
+    def add_player(self, player: Player) -> None:
+        """Add a player to the game."""
 
         if self.state.game_finished:
             raise ValueError(
@@ -88,10 +84,7 @@ class MenchGame:
 
         self.state.add_player(player)
 
-    def get_player(
-        self,
-        user_id: int,
-    ) -> Player | None:
+    def get_player(self, user_id: int) -> Player | None:
         """Return a player by user ID."""
 
         return self.state.get_player(user_id)
@@ -114,7 +107,9 @@ class MenchGame:
                 "Game has already finished."
             )
 
-        if self.state.player_count() not in (2, 3, 4):
+        player_count = self.state.player_count()
+
+        if player_count not in (2, 3, 4):
             raise ValueError(
                 "Mench requires 2, 3, or 4 players."
             )
@@ -142,18 +137,13 @@ class MenchGame:
     # Turn helpers
     # ========================================================
 
-    def current_player(
-        self,
-    ) -> Player | None:
+    def current_player(self) -> Player | None:
         """Return the player whose turn it is."""
 
         return self.state.current_player()
 
-    def is_player_turn(
-        self,
-        user_id: int,
-    ) -> bool:
-        """Return True when the given player owns the current turn."""
+    def is_player_turn(self, user_id: int) -> bool:
+        """Return True when user owns the current turn."""
 
         return self.state.current_player_id == user_id
 
@@ -161,8 +151,7 @@ class MenchGame:
         """
         Move to the next player.
 
-        This should only be called when the current player
-        does not receive another roll.
+        Does nothing when the game has already finished.
         """
 
         if self.state.game_finished:
@@ -175,16 +164,19 @@ class MenchGame:
     # Dice
     # ========================================================
 
-    @staticmethod
-    def _validate_dice(
-        dice_value: int,
-    ) -> None:
+    @classmethod
+    def _validate_dice(cls, dice_value: int) -> None:
         """Validate a dice value."""
 
+        if not isinstance(dice_value, int):
+            raise ValueError(
+                "Dice value must be an integer."
+            )
+
         if not (
-            MenchGame.DICE_MIN
+            cls.DICE_MIN
             <= dice_value
-            <= MenchGame.DICE_MAX
+            <= cls.DICE_MAX
         ):
             raise ValueError(
                 "Dice value must be between 1 and 6."
@@ -198,10 +190,10 @@ class MenchGame:
         """
         Roll the dice.
 
-        dice_value can be supplied by tests or trusted game
-        logic to make the result deterministic.
+        dice_value may be supplied by tests for deterministic
+        gameplay.
 
-        In production, leave it as None.
+        In production, leave dice_value as None.
         """
 
         if self.state.game_finished:
@@ -227,14 +219,14 @@ class MenchGame:
 
         self._validate_dice(dice_value)
 
-        self.state.set_dice(dice_value)
-
         player = self.get_player(user_id)
 
         if player is None:
             raise ValueError(
                 "Player does not exist."
             )
+
+        self.state.set_dice(dice_value)
 
         legal_pieces = self.get_movable_pieces(
             user_id,
@@ -244,10 +236,6 @@ class MenchGame:
         if legal_pieces:
             self.state.require_piece_selection()
         else:
-            # No legal move.
-            #
-            # A roll of 6 still gives the player another roll.
-            # For other values the turn moves to the next player.
             self.state.waiting_for_piece = False
 
         return dice_value
@@ -263,8 +251,6 @@ class MenchGame:
     ) -> list[Piece]:
         """
         Return all pieces that can legally move.
-
-        If dice_value is omitted, the currently rolled dice is used.
         """
 
         player = self.get_player(user_id)
@@ -284,32 +270,20 @@ class MenchGame:
 
         self._validate_dice(dice_value)
 
-        result: list[Piece] = []
-
-        for piece in player.pieces:
+        return [
+            piece
+            for piece in player.pieces
             if can_piece_move(
                 piece,
                 dice_value,
-            ):
-                result.append(piece)
-
-        # A piece in the yard can only enter on a 6.
-        for piece in player.pieces:
-            if piece.is_in_yard():
-                if can_enter_from_yard(
-                    piece,
-                    dice_value,
-                ):
-                    if piece not in result:
-                        result.append(piece)
-
-        return result
+            )
+        ]
 
     def has_legal_move(
         self,
         user_id: int,
     ) -> bool:
-        """Return True if the player has at least one legal move."""
+        """Return True when at least one piece can move."""
 
         if self.state.dice_value is None:
             return False
@@ -330,7 +304,7 @@ class MenchGame:
         user_id: int,
         piece_id: str,
     ) -> tuple[Player, Piece]:
-        """Validate player turn and find the selected piece."""
+        """Validate turn and return selected piece."""
 
         if self.state.game_finished:
             raise ValueError(
@@ -362,66 +336,67 @@ class MenchGame:
         self,
         piece: Piece,
     ) -> None:
-        """
-        Move a yard piece onto its starting track cell.
+        """Move a yard piece onto its starting cell."""
 
-        The standard Mench/Ludo rule used here is:
-        rolling 6 allows a piece to leave the yard.
-        """
+        piece.enter_board()
 
-        piece.status = "track"
-        piece.relative_step = 0
-
-    def _move_piece_on_track(
+    def _move_piece_on_board(
         self,
         piece: Piece,
         dice_value: int,
     ) -> None:
-        """Move a piece according to its relative step."""
+        """Move an already-entered piece."""
 
-        destination = piece.relative_step + dice_value
+        destination = (
+            piece.relative_step
+            + dice_value
+        )
 
         if destination > FINISH_STEP:
             raise ValueError(
                 "Piece cannot move beyond the finish."
             )
 
-        piece.relative_step = destination
-
         if destination == FINISH_STEP:
-            piece.status = "finished"
+            piece.finish()
+            return
 
-        elif is_home_column(destination):
-            piece.status = "home_column"
-
-        elif is_on_track(destination):
-            piece.status = "track"
-
-        else:
-            raise ValueError(
-                "Invalid piece destination."
+        if is_home_column(destination):
+            piece.move_to_home_column(
+                destination
             )
+            return
+
+        if is_on_track(destination):
+            piece.move_to_track(
+                destination
+            )
+            return
+
+        raise ValueError(
+            "Invalid piece destination."
+        )
 
     def _move_piece(
         self,
         piece: Piece,
         dice_value: int,
     ) -> None:
-        """Apply the actual movement to a piece."""
+        """Apply actual movement to a piece."""
+
+        if not can_piece_move(
+            piece,
+            dice_value,
+        ):
+            raise ValueError(
+                "This piece cannot move with this dice value."
+            )
 
         if piece.is_in_yard():
-            if not can_enter_from_yard(
-                piece,
-                dice_value,
-            ):
-                raise ValueError(
-                    "This piece cannot leave the yard with this dice value."
-                )
-
-            self._move_piece_from_yard(piece)
+            piece.enter_board()
             return
 
-        self._move_piece_on_track(
+        self._move_piece_on_board(
             piece,
             dice_value,
         )
@@ -436,13 +411,10 @@ class MenchGame:
     ) -> list[str]:
         """
         Capture opponent pieces occupying the same unsafe
-        track cell.
-
-        Pieces in the home column and finished pieces cannot
-        be captured.
+        shared-track cell.
         """
 
-        if attacker.status != "track":
+        if not attacker.is_on_track():
             return []
 
         attacker_cell = global_cell_for_step(
@@ -453,34 +425,34 @@ class MenchGame:
         if attacker_cell is None:
             return []
 
-        if is_destination_safe(
-            attacker.color,
-            attacker.relative_step,
-        ):
+        if is_safe_track_cell(attacker_cell):
             return []
 
         captured: list[str] = []
 
         for player in self.state.players:
+
             if player.color == attacker.color:
                 continue
 
-            for piece in player.pieces:
-                if piece.status != "track":
+            for victim in player.pieces:
+
+                if not victim.is_on_track():
                     continue
 
                 victim_cell = global_cell_for_step(
-                    piece.color,
-                    piece.relative_step,
+                    victim.color,
+                    victim.relative_step,
                 )
 
                 if victim_cell != attacker_cell:
                     continue
 
-                piece.status = "yard"
-                piece.relative_step = -1
+                victim.send_home()
 
-                captured.append(piece.piece_id)
+                captured.append(
+                    victim.piece_id
+                )
 
         return captured
 
@@ -529,6 +501,16 @@ class MenchGame:
         old_status = piece.status
         old_step = piece.relative_step
 
+        destination_cell = destination_global_cell(
+            piece,
+            dice_value,
+        )
+
+        destination_safe = is_destination_safe(
+            piece,
+            dice_value,
+        )
+
         self.state.clear_move_result()
 
         self._move_piece(
@@ -540,15 +522,12 @@ class MenchGame:
             piece
         )
 
-        destination_cell = None
-
-        if piece.status == "track":
-            destination_cell = global_cell_for_step(
-                piece.color,
-                piece.relative_step,
-            )
-
-        elif old_status == "yard" and piece.status == "track":
+        # If the piece entered the board from yard,
+        # its destination is its starting global cell.
+        if (
+            destination_cell is None
+            and piece.is_on_track()
+        ):
             destination_cell = global_cell_for_step(
                 piece.color,
                 piece.relative_step,
@@ -558,41 +537,50 @@ class MenchGame:
             "user_id": user_id,
             "piece_id": piece.piece_id,
             "dice_value": dice_value,
+
             "old_status": old_status,
             "old_relative_step": old_step,
+
             "new_status": piece.status,
             "new_relative_step": piece.relative_step,
+
             "destination_global_cell": destination_cell,
+
+            "destination_safe": destination_safe,
+
             "captured_pieces": captured_piece_ids.copy(),
+
             "finished": piece.is_finished(),
+
             "player_finished": False,
-            "extra_turn": dice_value == self.EXTRA_TURN_ROLL,
+
+            "extra_turn": (
+                dice_value == self.EXTRA_TURN_ROLL
+            ),
+
+            "next_player_id": None,
         }
 
-        self.state.set_last_move(
-            move_result
-        )
         self.state.set_captured_pieces(
             captured_piece_ids
         )
 
-        # ----------------------------------------------------
-        # Check whether this player has finished.
-        # ----------------------------------------------------
+        # ====================================================
+        # Check player completion
+        # ====================================================
 
         if player.all_finished():
+
             move_result["player_finished"] = True
 
             if user_id not in self.state.winner_order:
-                self.state.winner_order.append(user_id)
+                self.state.winner_order.append(
+                    user_id
+                )
 
-        # ----------------------------------------------------
-        # Check whether the entire game is finished.
-        #
-        # For 2 players, the first player finishing wins.
-        # For 3/4 players, the game ends when only one player
-        # remains unfinished.
-        # ----------------------------------------------------
+        # ====================================================
+        # Check game completion
+        # ====================================================
 
         unfinished_players = [
             p
@@ -601,24 +589,30 @@ class MenchGame:
         ]
 
         if len(unfinished_players) <= 1:
+
             self.state.game_finished = True
 
-        # ----------------------------------------------------
-        # Six gives an extra roll, provided the game has not
-        # finished.
-        # ----------------------------------------------------
+            if self.state.winner_order:
+                self.state.winner_id = (
+                    self.state.winner_order[0]
+                )
+
+        # ====================================================
+        # Extra turn after six
+        # ====================================================
 
         if (
             not self.state.game_finished
             and dice_value == self.EXTRA_TURN_ROLL
         ):
-            self.state.waiting_for_piece = False
-            self.state.dice_rolled = False
             self.state.dice_value = None
+            self.state.dice_rolled = False
+            self.state.waiting_for_piece = False
+
             self.state.turn_number += 1
 
-            move_result["next_player_id"] = user_id
             move_result["extra_turn"] = True
+            move_result["next_player_id"] = user_id
 
             self.state.set_last_move(
                 move_result
@@ -626,19 +620,19 @@ class MenchGame:
 
             return move_result
 
-        # ----------------------------------------------------
-        # Normal turn ends here.
-        # ----------------------------------------------------
+        # ====================================================
+        # Normal turn
+        # ====================================================
 
         self.state.waiting_for_piece = False
 
         if not self.state.game_finished:
+
             self.advance_turn()
+
             move_result["next_player_id"] = (
                 self.state.current_player_id
             )
-        else:
-            move_result["next_player_id"] = None
 
         self.state.set_last_move(
             move_result
@@ -647,7 +641,7 @@ class MenchGame:
         return move_result
 
     # ========================================================
-    # No-legal-move handling
+    # No legal move
     # ========================================================
 
     def finish_roll_without_move(
@@ -655,10 +649,13 @@ class MenchGame:
         user_id: int,
     ) -> dict:
         """
-        Finish a turn when the player has no legal move.
+        Finish a roll when no legal piece exists.
 
-        A roll of 6 gives another roll.
-        Other dice values move the turn to the next player.
+        Roll 6:
+            same player receives another roll.
+
+        Other values:
+            turn moves to next player.
         """
 
         if self.state.game_finished:
@@ -688,26 +685,38 @@ class MenchGame:
                 "Player still has a legal move."
             )
 
-        self.state.waiting_for_piece = False
-
         result = {
             "user_id": user_id,
             "dice_value": dice_value,
             "moved": False,
-            "extra_turn": dice_value == self.EXTRA_TURN_ROLL,
+            "extra_turn": (
+                dice_value == self.EXTRA_TURN_ROLL
+            ),
             "next_player_id": user_id,
         }
 
+        self.state.waiting_for_piece = False
+
+        # ====================================================
+        # Six = extra roll
+        # ====================================================
+
         if dice_value == self.EXTRA_TURN_ROLL:
+
             self.state.dice_value = None
             self.state.dice_rolled = False
-            self.state.waiting_for_piece = False
 
             self.state.turn_number += 1
 
-            self.state.set_last_move(result)
+            self.state.set_last_move(
+                result
+            )
 
             return result
+
+        # ====================================================
+        # Normal next player
+        # ====================================================
 
         self.advance_turn()
 
@@ -715,7 +724,9 @@ class MenchGame:
             self.state.current_player_id
         )
 
-        self.state.set_last_move(result)
+        self.state.set_last_move(
+            result
+        )
 
         return result
 
@@ -729,12 +740,15 @@ class MenchGame:
         return self.state.game_finished
 
     def winner(self) -> Player | None:
-        """Return the winner when the game is finished."""
+        """Return the first player who finished."""
 
-        if not self.state.winner_order:
-            return None
+        winner_id = self.state.winner_id
 
-        winner_id = self.state.winner_order[0]
+        if winner_id is None:
+            if not self.state.winner_order:
+                return None
+
+            winner_id = self.state.winner_order[0]
 
         return self.get_player(winner_id)
 
