@@ -821,6 +821,16 @@ class DominoGame:
                 self.player_b.user_id:
                     len(self.player_b.hand),
             },
+            "hands": {
+                self.player_a.user_id: [
+                    t.to_dict()
+                    for t in self.player_a.hand
+                ],
+                self.player_b.user_id: [
+                    t.to_dict()
+                    for t in self.player_b.hand
+                ],
+            },
         }
 
         self.state.round_over = True
@@ -897,6 +907,16 @@ class DominoGame:
                     len(self.player_a.hand),
                 self.player_b.user_id:
                     len(self.player_b.hand),
+            },
+            "hands": {
+                self.player_a.user_id: [
+                    t.to_dict()
+                    for t in self.player_a.hand
+                ],
+                self.player_b.user_id: [
+                    t.to_dict()
+                    for t in self.player_b.hand
+                ],
             },
         }
 
