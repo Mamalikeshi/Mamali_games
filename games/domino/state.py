@@ -37,6 +37,10 @@ class DominoState:
         # زمان شروع نوبتِ فعلی (برای تایمر ۲۰ ثانیه‌ای)
         self.turn_started_at: float = time.time()
 
+        # اگر بازیکن نه مهره‌ی قابل‌بازی دارد و نه امکان کشیدن،
+        # این زمانِ شروعِ شمارش معکوسِ پاسِ خودکار (۲ ثانیه) است
+        self.pending_pass_at: float | None = None
+
         # =====================================================
         # اطلاعات حرکت
         # =====================================================
@@ -77,6 +81,8 @@ class DominoState:
             "current_turn": self.current_turn,
 
             "turn_started_at": self.turn_started_at,
+
+            "pending_pass_at": self.pending_pass_at,
 
             "last_player": self.last_player,
 
