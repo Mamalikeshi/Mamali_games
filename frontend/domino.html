@@ -251,7 +251,7 @@
         }
 
         .board {
-            height: 100px;
+            height: 132px;
             background:
                 radial-gradient(ellipse at center, #1f7a4d 0%, #145a38 55%, #0d3f27 100%);
             border: 8px solid #5a3a20;
@@ -259,12 +259,12 @@
                 inset 0 0 30px rgba(0,0,0,0.5),
                 0 6px 18px rgba(0,0,0,0.5);
             border-radius: 20px;
-            padding: 10px 14px;
+            padding: 6px 8px;
             display: flex;
             align-items: center;
-            justify-content: flex-start;
+            justify-content: center;
             flex-wrap: nowrap;
-            gap: 7px;
+            gap: 0;
             overflow-x: auto;
             overflow-y: hidden;
             direction: ltr;
@@ -286,13 +286,6 @@
             direction: rtl;
             width: 100%;
             text-align: center;
-        }
-
-        .board-hint {
-            text-align: center;
-            font-size: 11px;
-            color: #8fb0be;
-            margin-top: 6px;
         }
 
         .tile {
@@ -422,7 +415,7 @@
         }
 
         .hand-card-spacer {
-            height: 250px;
+            height: 210px;
         }
 
         .hand {
@@ -475,6 +468,17 @@
             text-align: center;
             font-size: 13px;
             color: #ffe9a8;
+        }
+
+        .auto-status {
+            margin-top: 10px;
+            background: rgba(255,107,91,.15);
+            border: 1px solid rgba(255,107,91,.4);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            color: #ffb3a8;
         }
 
         .message {
@@ -779,10 +783,6 @@
                 </div>
             </div>
 
-            <div class="board-hint">
-                ↔️ برای دیدن ادامه‌ی زنجیره، میز را به چپ و راست بکشید
-            </div>
-
         </div>
 
         <!-- دست حریف -->
@@ -813,24 +813,7 @@
                 👆 مهره‌ی انتهای زمین (سمت چپ یا راست) را که چشمک می‌زند لمس کنید
             </div>
 
-            <div class="actions">
-
-                <button
-                    id="drawButton"
-                    class="btn warning"
-                    onclick="drawTile()"
-                >
-                    🁢 کشیدن مهره
-                </button>
-
-                <button
-                    id="passButton"
-                    class="btn danger"
-                    onclick="passTurn()"
-                >
-                    ⏭ پاس
-                </button>
-
+            <div id="autoStatus" class="auto-status hidden">
             </div>
 
         </div>
@@ -1628,7 +1611,7 @@
 
         renderOpponent(game);
 
-        renderButtons(game);
+        renderAutoStatus(game);
     }
 
 
@@ -1659,17 +1642,81 @@
         }
 
 
+        /*
+         * محاسبه‌ی سایز مناسب مهره‌ها تا کل زنجیره،
+         * بدون فاصله و بدون نیاز به اسکرول، داخل قاب میز جا بشه.
+         * دوبل‌ها روی میز عمودی چیده می‌شن، پس فقط ضلع کوتاهشون
+         * در طول زنجیره حساب می‌شه.
+         */
+        const RATIO = 0.58;
+        const MAX_LONG = 60;
+        const MIN_LONG = 20;
+
+        const isDoubleTile = (t) =>
+            t.is_double === true ||
+            t.left === t.right;
+
+        const doubleCount =
+            tiles.filter(isDoubleTile).length;
+
+        const singleCount =
+            tiles.length - doubleCount;
+
+        const totalUnits =
+            singleCount +
+            (doubleCount * RATIO);
+
+        const availableWidth =
+            (board.clientWidth || 320) - 4;
+
+        let longSize =
+            totalUnits > 0
+                ? availableWidth / totalUnits
+                : MAX_LONG;
+
+        longSize = Math.max(
+            MIN_LONG,
+            Math.min(MAX_LONG, longSize)
+        );
+
+        const shortSize =
+            longSize * RATIO;
+
+
+        const fragment =
+            document.createDocumentFragment();
+
         tiles.forEach((tile) => {
 
-            board.appendChild(
+            const el =
                 createTileElement(
                     tile,
                     false,
                     null,
                     true
-                )
-            );
+                );
+
+            if (isDoubleTile(tile)) {
+
+                el.style.width =
+                    `${shortSize}px`;
+
+                el.style.height =
+                    `${longSize}px`;
+
+            } else {
+
+                el.style.width =
+                    `${longSize}px`;
+
+                el.style.height =
+                    `${shortSize}px`;
+            }
+
+            fragment.appendChild(el);
         });
+
+        board.appendChild(fragment);
     }
 
 
@@ -2209,60 +2256,6 @@
     /*
      * کشیدن مهره
      */
-    async function drawTile() {
-
-        try {
-
-            await apiRequest(
-                `${API}/rooms/${encodeURIComponent(roomId)}/draw/${encodeURIComponent(userId)}`,
-                {
-                    method: "POST"
-                }
-            );
-
-            await refreshGame();
-
-            showMessage(
-                "یک مهره کشیدید.",
-                "success"
-            );
-
-        } catch (error) {
-
-            showMessage(
-                error.message,
-                "error"
-            );
-        }
-    }
-
-
-    /*
-     * پاس
-     */
-    async function passTurn() {
-
-        try {
-
-            await apiRequest(
-                `${API}/rooms/${encodeURIComponent(roomId)}/pass/${encodeURIComponent(userId)}`,
-                {
-                    method: "POST"
-                }
-            );
-
-            await refreshGame();
-
-        } catch (error) {
-
-            showMessage(
-                error.message,
-                "error"
-            );
-        }
-    }
-
-
     /*
      * نمایش نوبت + شمارش‌معکوس ۲۰ ثانیه‌ای
      */
@@ -2416,73 +2409,30 @@
 
         container.innerHTML = "";
 
-        const state =
-            game.state || {};
+        /*
+         * تعداد مهره‌های حریف مستقیماً از player_a/player_b
+         * که از سرور می‌آد خونده می‌شه (hand_count)
+         */
+        let count = 0;
 
-        const players =
-            game.players || [];
-
-        let opponentId = null;
-
-
-        if (Array.isArray(players)) {
-
-            const opponent =
-                players.find(
-                    p =>
-                        String(p.user_id) !==
-                        String(userId)
-                );
-
-            if (opponent) {
-                opponentId =
-                    opponent.user_id;
-            }
-        }
-
-
-        let count =
-            game.opponent_hand_count;
-
+        const playerA = game.player_a;
+        const playerB = game.player_b;
 
         if (
-            count === undefined &&
-            opponentId &&
-            game.player_hands
+            playerA &&
+            String(playerA.user_id) !==
+            String(userId)
         ) {
 
-            count =
-                game.player_hands[
-                    opponentId
-                ]?.length;
-        }
+            count = playerA.hand_count || 0;
 
+        } else if (
+            playerB &&
+            String(playerB.user_id) !==
+            String(userId)
+        ) {
 
-        if (count === undefined) {
-
-            count = 0;
-
-            if (
-                Array.isArray(players)
-            ) {
-
-                const opponent =
-                    players.find(
-                        p =>
-                            String(
-                                p.user_id
-                            ) !==
-                            String(userId)
-                    );
-
-                if (opponent) {
-
-                    count =
-                        opponent.hand_count ||
-                        opponent.hand?.length ||
-                        0;
-                }
-            }
+            count = playerB.hand_count || 0;
         }
 
 
@@ -2514,9 +2464,9 @@
 
 
     /*
-     * فعال / غیرفعال کردن دکمه‌ها
+     * نمایش وضعیتِ خودکار (در حال پاس / منتظر مهره‌ی قابل‌بازی)
      */
-    function renderButtons(game) {
+    function renderAutoStatus(game) {
 
         const state =
             game.state || {};
@@ -2526,40 +2476,29 @@
                 state.current_turn
             ) === String(userId);
 
-
-        const boardTiles =
-            state.board_tiles ||
-            state.board ||
-            [];
-
-
-        const boneyard =
-            Number(
-                game.boneyard_remaining ??
-                game.boneyard_count ??
-                0
-            );
-
-
-        const draw =
+        const statusEl =
             document.getElementById(
-                "drawButton"
+                "autoStatus"
             );
 
-        const pass =
-            document.getElementById(
-                "passButton"
+        if (
+            isMyTurn &&
+            state.pending_pass_at
+        ) {
+
+            statusEl.textContent =
+                "⏭ مهره‌ی قابل‌بازی ندارید — به‌زودی به‌صورت خودکار پاس داده می‌شود...";
+
+            statusEl.classList.remove(
+                "hidden"
             );
 
+        } else {
 
-        draw.disabled =
-            !isMyTurn ||
-            boneyard <= 0;
-
-
-        pass.disabled =
-            !isMyTurn ||
-            boneyard > 0;
+            statusEl.classList.add(
+                "hidden"
+            );
+        }
     }
 
 
