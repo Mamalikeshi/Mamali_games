@@ -69,6 +69,9 @@ class DominoGame:
 
         self.round_number: int = 0
 
+        # شروع‌کننده‌ی دستِ قبلی (برای چرخشِ نوبتِ شروع‌کننده)
+        self.last_starter: int | None = None
+
         self.last_round_summary: dict | None = None
 
         # =====================================================
@@ -95,6 +98,9 @@ class DominoGame:
 
         self.state.current_turn = user_id
         self.state.turn_started_at = time.time()
+        self.state.pending_pass_at = None
+
+        self._auto_resolve_turn()
 
     # =========================================================
     # ثبت حضور بازیکن (heartbeat)
@@ -103,6 +109,91 @@ class DominoGame:
     def touch_presence(self, user_id: int):
 
         self.last_seen[user_id] = time.time()
+
+    # =========================================================
+    # کشیدن خودکار از بازار تا رسیدن به مهره‌ی قابل‌بازی
+    # (بازیکن دیگر خودش دکمه‌ی «کشیدن مهره» را نمی‌زند)
+    # =========================================================
+
+    def _auto_resolve_turn(self):
+
+        if self.state is None:
+            return
+
+        if self.match_finished or self.round_finished:
+            return
+
+        user_id = self.state.current_turn
+
+        if user_id is None:
+            return
+
+        player = self.get_player(user_id)
+
+        if player is None:
+            return
+
+        while (
+            not self.get_playable_tiles(user_id)
+            and self.deck is not None
+            and not self.deck.is_empty()
+        ):
+
+            drawn = self.deck.draw(1)
+
+            if not drawn:
+                break
+
+            player.add_to_hand(drawn)
+
+        if self.get_playable_tiles(user_id):
+
+            self.state.pending_pass_at = None
+
+            return
+
+        # نه مهره‌ی قابل‌بازی دارد، نه امکان کشیدن → آماده‌ی پاسِ خودکار
+        if self.state.pending_pass_at is None:
+
+            self.state.pending_pass_at = time.time()
+
+    # =========================================================
+    # اجرای پاسِ خودکار بعد از چند ثانیه مکث
+    # =========================================================
+
+    def check_pending_pass(
+        self,
+        delay_seconds: float = 2.0,
+    ) -> bool:
+
+        if self.match_finished:
+            return False
+
+        if self.round_finished:
+            return False
+
+        if self.state is None:
+            return False
+
+        if self.state.pending_pass_at is None:
+            return False
+
+        elapsed = (
+            time.time() -
+            self.state.pending_pass_at
+        )
+
+        if elapsed < delay_seconds:
+            return False
+
+        user_id = self.state.current_turn
+
+        if user_id is None:
+            return False
+
+        self.state.pending_pass_at = None
+
+        return self.pass_turn(user_id)
 
     # =========================================================
     # شروع Match
@@ -117,6 +208,8 @@ class DominoGame:
         self.match_winner = None
 
         self.round_number = 0
+
+        self.last_starter = None
 
         self.player_a.score = 0
         self.player_b.score = 0
@@ -149,7 +242,16 @@ class DominoGame:
 
         self.round_number += 1
 
-        starter = self._choose_starter()
+        # از دست دوم به بعد، شروع‌کننده همیشه عوض می‌شود
+        # (فارغ از اینکه دست قبلی را چه کسی برده)
+        if self.last_starter is None:
+            starter = self._choose_starter()
+        else:
+            starter = self._other_player(
+                self.last_starter
+            ).user_id
+
+        self.last_starter = starter
 
         self._set_turn(starter)
 
@@ -1007,6 +1109,7 @@ class DominoGame:
     def get_state(self) -> dict:
 
         # هر بار وضعیت خوانده می‌شود، تایمرها بررسی می‌شوند
+        self.check_pending_pass()
         self.check_turn_timeout()
         self.check_disconnect_forfeit()
 
