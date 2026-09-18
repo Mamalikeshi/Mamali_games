@@ -1728,22 +1728,24 @@
 
 
         /*
-         * چیدمانِ «مارپیچ»: مهره‌ها در یک ردیف افقی چیده می‌شن،
-         * و هر وقت جا در ردیف تموم بشه، مسیر به پایین می‌شکنه و
-         * در جهت مخالف ادامه پیدا می‌کنه (مثل خونه‌سازی/مارپیچ).
-         * این‌طوری هیچ‌وقت نیازی به اسکرول افقی نیست و مهره‌ها
-         * همیشه در اندازه‌ی خوانا و ثابت باقی می‌مونن.
+         * چیدمانِ «مارپیچ»: مهره‌ها در یک ردیف افقی چیده می‌شن و
+         * هر ردیف وسط‌چین می‌شه (اولین مهره دقیقاً وسط زمین
+         * می‌افته). وقتی جا در ردیف تموم بشه، همون مهره‌ی آخر
+         * که باعث شکستن مسیر می‌شه به‌صورت عمودی چرخونده می‌شه
+         * (مثل یک مهره‌ی گوشه/شکست واقعی) و ردیف بعدی از زیرش،
+         * در جهت مخالف، ادامه پیدا می‌کنه.
          *
-         * نکته‌ی مهم: در ردیف‌هایی که جهتشون از راست‌به‌چپ برگشته
-         * (dir=-1)، برای اینکه نقطه‌های دو مهره‌ی کناری هم درست
-         * به‌هم بچسبن، باید محتوای مهره را آینه (چپ↔راست) کنیم؛
-         * وگرنه لولا/اتصال زنجیره در آن ردیف نادرست نمایش داده می‌شه.
+         * نکته‌ی مهم: در ردیف‌هایی که جهتشون از راست‌به‌چپ
+         * برگشته، برای اینکه نقطه‌های دو مهره‌ی کناری هم درست
+         * به‌هم بچسبن، محتوای مهره را آینه (چپ↔راست) می‌کنیم؛
+         * وگرنه اتصال زنجیره در آن ردیف نادرست نمایش داده می‌شه.
          */
         const RATIO = 0.58;
         const LONG = 44;
         const SHORT = LONG * RATIO;
         const GAP = 2;
         const ROW_GAP = 6;
+        const MIN_BOARD_CONTENT_HEIGHT = 232;
 
         const isDoubleTile = (t) =>
             t.is_double === true ||
@@ -1753,106 +1755,214 @@
             (board.clientWidth || 320) -
             2;
 
-        let x = 0;
-        let y = 0;
-        let dir = 1;
 
+        /*
+         * گام ۱: تقسیم مهره‌ها به ردیف‌ها، و مشخص‌کردن
+         * مهره‌ی «شکست» (عمودی) در انتهای هر ردیفِ ناقص
+         */
+        const rows = [];
+        let i = 0;
+
+        while (i < tiles.length) {
+
+            let rowWidth = 0;
+            const row = [];
+
+            while (i < tiles.length) {
+
+                const tile = tiles[i];
+                const isDouble =
+                    isDoubleTile(tile);
+
+                const w =
+                    (isDouble ? SHORT : LONG) +
+                    GAP;
+
+                if (
+                    row.length > 0 &&
+                    rowWidth + w > containerWidth
+                ) {
+                    break;
+                }
+
+                row.push({
+                    tile,
+                    isDouble,
+                    forceVertical: false
+                });
+
+                rowWidth += w;
+                i++;
+            }
+
+            if (
+                i < tiles.length &&
+                row.length > 0
+            ) {
+
+                const last =
+                    row[row.length - 1];
+
+                if (!last.isDouble) {
+
+                    rowWidth =
+                        rowWidth -
+                        (LONG + GAP) +
+                        (SHORT + GAP);
+
+                    last.forceVertical = true;
+                }
+            }
+
+            rows.push({
+                items: row,
+                width: Math.max(
+                    0,
+                    rowWidth - GAP
+                )
+            });
+        }
+
+
+        /*
+         * گام ۲: چیدن مهره‌ها با وسط‌چین‌کردن هر ردیف
+         */
         const fragment =
             document.createDocumentFragment();
 
-        tiles.forEach((tile) => {
+        let y = 0;
 
-            const isDouble =
-                isDoubleTile(tile);
+        rows.forEach((row, rowIndex) => {
 
-            const footprint =
-                (isDouble ? SHORT : LONG) +
-                GAP;
+            const dir =
+                rowIndex % 2 === 0 ? 1 : -1;
 
-            /*
-             * اگر این مهره در ردیف فعلی جا نمی‌شه،
-             * یک ردیف به پایین برو و جهت را برعکس کن
-             */
-            if (
-                dir === 1 &&
-                x + footprint > containerWidth
-            ) {
+            const startX =
+                Math.max(
+                    0,
+                    (containerWidth - row.width) / 2
+                );
 
-                y += LONG + ROW_GAP;
-                dir = -1;
-                x = containerWidth;
+            const displayItems =
+                dir === 1
+                    ? row.items
+                    : row.items.slice().reverse();
 
-            } else if (
-                dir === -1 &&
-                x - footprint < 0
-            ) {
+            let x = startX;
+            let rowMaxHeight = SHORT;
 
-                y += LONG + ROW_GAP;
-                dir = 1;
-                x = 0;
-            }
+            displayItems.forEach((item) => {
 
+                const {
+                    tile,
+                    isDouble,
+                    forceVertical
+                } = item;
 
-            const el =
-                createTileElement(
+                const vertical =
+                    isDouble || forceVertical;
+
+                const tileWidth =
+                    vertical ? SHORT : LONG;
+
+                const tileHeight =
+                    vertical ? LONG : SHORT;
+
+                rowMaxHeight = Math.max(
+                    rowMaxHeight,
+                    tileHeight
+                );
+
+                const displayTile =
                     dir === -1
                         ? {
                               left: tile.right,
                               right: tile.left,
-                              is_double: isDouble
+                              is_double: tile.is_double
                           }
-                        : tile,
-                    false,
-                    null,
-                    true
-                );
+                        : tile;
 
-            const tileWidth =
-                isDouble ? SHORT : LONG;
+                const el =
+                    createTileElement(
+                        displayTile,
+                        false,
+                        null,
+                        true
+                    );
 
-            const tileHeight =
-                isDouble ? LONG : SHORT;
+                if (vertical) {
+                    el.classList.add(
+                        "vertical"
+                    );
+                }
 
-            el.style.width =
-                `${tileWidth}px`;
+                el.style.width =
+                    `${tileWidth}px`;
 
-            el.style.height =
-                `${tileHeight}px`;
+                el.style.height =
+                    `${tileHeight}px`;
 
-            el.style.position =
-                "absolute";
+                el.style.position =
+                    "absolute";
 
-            const left =
-                dir === 1
-                    ? x
-                    : x - tileWidth;
+                el.style.left =
+                    `${x}px`;
 
-            el.style.left =
-                `${left}px`;
+                el.style.top =
+                    `${y}px`;
 
-            el.style.top =
-                `${y}px`;
+                fragment.appendChild(el);
 
-            fragment.appendChild(el);
+                x += tileWidth + GAP;
+            });
 
-
-            if (dir === 1) {
-                x += footprint;
-            } else {
-                x -= footprint;
-            }
+            y += rowMaxHeight + ROW_GAP;
         });
+
+
+        /*
+         * اگر کل محتوا کوتاه‌تر از ارتفاعِ دلخواهِ میزه (مثلاً
+         * وقتی فقط یکی-دو مهره روی زمینه)، عمودی هم وسط‌چینش
+         * می‌کنیم تا اولین مهره دقیقاً وسط زمین بیفته
+         */
+        const contentHeight =
+            Math.max(0, y - ROW_GAP);
+
+        const verticalOffset =
+            contentHeight <
+            MIN_BOARD_CONTENT_HEIGHT
+                ? (
+                      MIN_BOARD_CONTENT_HEIGHT -
+                      contentHeight
+                  ) / 2
+                : 0;
+
+        if (verticalOffset > 0) {
+
+            fragment
+                .querySelectorAll(
+                    ".tile"
+                )
+                .forEach((el) => {
+
+                    const currentTop =
+                        parseFloat(
+                            el.style.top ||
+                            "0"
+                        );
+
+                    el.style.top =
+                        `${currentTop + verticalOffset}px`;
+                });
+        }
 
         container.appendChild(fragment);
 
-        /*
-         * ارتفاع واقعیِ محتوا رو صریحاً تنظیم می‌کنیم چون
-         * فرزندهای absolute در محاسبه‌ی ارتفاع طبیعی حساب نمی‌شن؛
-         * اگر از حداکثر مجاز (CSS max-height) بیشتر باشه،
-         * خودِ ظرف به‌صورت عمودی اسکرول می‌شه.
-         */
         board.style.height =
-            `${y + LONG + 4}px`;
+            `${Math.max(
+                MIN_BOARD_CONTENT_HEIGHT,
+                contentHeight
+            ) + 20}px`;
     }
 
 
