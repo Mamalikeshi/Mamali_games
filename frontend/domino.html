@@ -1728,17 +1728,18 @@
 
 
         /*
-         * چیدمانِ «مارپیچ»: مهره‌ها در یک ردیف افقی چیده می‌شن و
-         * هر ردیف وسط‌چین می‌شه (اولین مهره دقیقاً وسط زمین
-         * می‌افته). وقتی جا در ردیف تموم بشه، همون مهره‌ی آخر
-         * که باعث شکستن مسیر می‌شه به‌صورت عمودی چرخونده می‌شه
-         * (مثل یک مهره‌ی گوشه/شکست واقعی) و ردیف بعدی از زیرش،
-         * در جهت مخالف، ادامه پیدا می‌کنه.
+         * چیدمانِ «مارپیچ» با رعایت قانون واقعیِ دومینو:
+         * هر مهره‌ی جفت (دوبل) همیشه به‌صورت عمودی نمایش داده
+         * می‌شه و همیشه نقطه‌ی چرخش مسیره — یعنی بعد از هر
+         * دوبل، ردیف تموم می‌شه و ردیفِ بعدی دقیقاً از زیرِ
+         * مرکز همون دوبل ادامه پیدا می‌کنه (مثل دومینوی واقعی
+         * که مهره‌های بعدی به وسط دوبل می‌چسبن، نه لبه‌ش).
+         * اگه قبل از رسیدن به دوبل هم عرض ردیف تموم بشه، ردیف
+         * به‌خاطر کمبود جا می‌شکنه (و آخرین مهره‌ش عمودی می‌شه).
          *
          * نکته‌ی مهم: در ردیف‌هایی که جهتشون از راست‌به‌چپ
          * برگشته، برای اینکه نقطه‌های دو مهره‌ی کناری هم درست
-         * به‌هم بچسبن، محتوای مهره را آینه (چپ↔راست) می‌کنیم؛
-         * وگرنه اتصال زنجیره در آن ردیف نادرست نمایش داده می‌شه.
+         * به‌هم بچسبن، محتوای مهره را آینه (چپ↔راست) می‌کنیم.
          */
         const RATIO = 0.58;
         const LONG = 44;
@@ -1757,8 +1758,7 @@
 
 
         /*
-         * گام ۱: تقسیم مهره‌ها به ردیف‌ها، و مشخص‌کردن
-         * مهره‌ی «شکست» (عمودی) در انتهای هر ردیفِ ناقص
+         * گام ۱: تقسیم مهره‌ها به ردیف‌ها
          */
         const rows = [];
         let i = 0;
@@ -1788,11 +1788,20 @@
                 row.push({
                     tile,
                     isDouble,
-                    forceVertical: false
+                    forceVertical: false,
+                    masterIndex: i
                 });
 
                 rowWidth += w;
                 i++;
+
+                if (isDouble) {
+                    /*
+                     * دوبل همیشه نقطه‌ی چرخشه؛ حتی اگه جای
+                     * بیشتری تو ردیف باشه، همینجا تمومش کن
+                     */
+                    break;
+                }
             }
 
             if (
@@ -1825,38 +1834,77 @@
 
 
         /*
-         * گام ۲: چیدن مهره‌ها با وسط‌چین‌کردن هر ردیف
+         * گام ۲: چیدن مهره‌ها. ردیف اول وسط‌چینِ کلِ زمینه؛
+         * ردیف‌های بعدی، اگه ردیفِ قبلی با یک دوبل تموم شده
+         * باشه، دقیقاً زیرِ مرکزِ همون دوبل شروع می‌شن.
          */
         const fragment =
             document.createDocumentFragment();
 
         let y = 0;
+        let dir = 1;
+        let alignCenterX = null;
 
-        rows.forEach((row, rowIndex) => {
-
-            const dir =
-                rowIndex % 2 === 0 ? 1 : -1;
-
-            const startX =
-                Math.max(
-                    0,
-                    (containerWidth - row.width) / 2
-                );
+        rows.forEach((row) => {
 
             const displayItems =
                 dir === 1
                     ? row.items
                     : row.items.slice().reverse();
 
+            const anchorItem =
+                row.items[0];
+
+            const anchorWidth =
+                (
+                    anchorItem.isDouble ||
+                    anchorItem.forceVertical
+                )
+                    ? SHORT
+                    : LONG;
+
+            let startX;
+
+            if (alignCenterX !== null) {
+
+                startX =
+                    dir === 1
+                        ? alignCenterX -
+                          anchorWidth / 2
+                        : alignCenterX -
+                          row.width +
+                          anchorWidth / 2;
+
+                startX = Math.max(
+                    0,
+                    Math.min(
+                        containerWidth -
+                            row.width,
+                        startX
+                    )
+                );
+
+            } else {
+
+                startX =
+                    Math.max(
+                        0,
+                        (containerWidth -
+                            row.width) / 2
+                    );
+            }
+
             let x = startX;
             let rowMaxHeight = SHORT;
+            let doubleCenterX = null;
 
             displayItems.forEach((item) => {
 
                 const {
                     tile,
                     isDouble,
-                    forceVertical
+                    forceVertical,
+                    masterIndex
                 } = item;
 
                 const vertical =
@@ -1911,12 +1959,53 @@
                 el.style.top =
                     `${y}px`;
 
+                /*
+                 * این ویژگی‌ها برای این هستن که وقتی مهره‌ای
+                 * از هر دو طرف قابل‌بازیه، بتونیم مطمئن و
+                 * دقیق مهره‌ی واقعیِ انتهای چپ/راستِ زنجیره رو
+                 * (فارغ از اینکه در کدوم ردیف/جهت چیده شده)
+                 * برای لمس مستقیم مشخص کنیم
+                 */
+                if (masterIndex === 0) {
+                    el.dataset.chainLeft =
+                        "1";
+                }
+
+                if (
+                    masterIndex ===
+                    tiles.length - 1
+                ) {
+                    el.dataset.chainRight =
+                        "1";
+                }
+
                 fragment.appendChild(el);
+
+                if (isDouble) {
+                    doubleCenterX =
+                        x + tileWidth / 2;
+                }
 
                 x += tileWidth + GAP;
             });
 
             y += rowMaxHeight + ROW_GAP;
+
+            const lastChainItem =
+                row.items[
+                    row.items.length - 1
+                ];
+
+            alignCenterX =
+                (
+                    lastChainItem &&
+                    lastChainItem.isDouble &&
+                    doubleCenterX !== null
+                )
+                    ? doubleCenterX
+                    : null;
+
+            dir = -dir;
         });
 
 
@@ -2396,32 +2485,104 @@
             );
 
             el.onclick = null;
+
+            el.querySelectorAll(
+                ".tile-half"
+            ).forEach((half) => {
+                half.onclick = null;
+                half.style.cursor = "";
+            });
         });
 
         if (!active || tiles.length === 0) {
             return;
         }
 
-        const firstTile =
-            tiles[0];
+        /*
+         * به‌جای فرض کردنِ ترتیبِ DOM (که با چیدمانِ مارپیچ/
+         * چرخشِ دور دوبل‌ها دیگه با ترتیبِ واقعیِ زنجیره یکی
+         * نیست)، دقیقاً همون مهره‌ای که در renderBoard به‌عنوان
+         * انتهای واقعیِ چپ/راستِ زنجیره علامت‌گذاری شده رو پیدا
+         * می‌کنیم
+         */
+        const leftTile =
+            board.querySelector(
+                '[data-chain-left="1"]'
+            );
 
-        const lastTile =
-            tiles[tiles.length - 1];
+        const rightTile =
+            board.querySelector(
+                '[data-chain-right="1"]'
+            );
 
-        firstTile.classList.add(
-            "selectable-end"
-        );
+        /*
+         * حالت خاص: وقتی فقط یک مهره روی زمینه، همون یک مهره
+         * هم‌زمان «هر دو» انتهای زنجیره‌ست. چون فقط یک مهره‌ی
+         * تصویری داریم، نصفِ چپش رو برای سمت چپ و نصفِ راستش
+         * رو برای سمت راست، جدا لمس‌پذیر می‌کنیم
+         */
+        if (
+            leftTile &&
+            rightTile &&
+            leftTile === rightTile
+        ) {
 
-        firstTile.onclick = () =>
-            playSelected("left");
-
-        if (lastTile !== firstTile) {
-
-            lastTile.classList.add(
+            leftTile.classList.add(
                 "selectable-end"
             );
 
-            lastTile.onclick = () =>
+            const halves =
+                leftTile.querySelectorAll(
+                    ".tile-half"
+                );
+
+            if (halves.length === 2) {
+
+                halves[0].style.cursor =
+                    "pointer";
+
+                halves[0].onclick = (e) => {
+                    e.stopPropagation();
+                    playSelected("left");
+                };
+
+                halves[1].style.cursor =
+                    "pointer";
+
+                halves[1].onclick = (e) => {
+                    e.stopPropagation();
+                    playSelected("right");
+                };
+
+            } else {
+
+                leftTile.onclick = () =>
+                    playSelected("left");
+            }
+
+            return;
+        }
+
+        if (leftTile) {
+
+            leftTile.classList.add(
+                "selectable-end"
+            );
+
+            leftTile.onclick = () =>
+                playSelected("left");
+        }
+
+        if (
+            rightTile &&
+            rightTile !== leftTile
+        ) {
+
+            rightTile.classList.add(
+                "selectable-end"
+            );
+
+            rightTile.onclick = () =>
                 playSelected("right");
         }
     }
