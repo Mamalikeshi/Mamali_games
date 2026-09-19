@@ -36,7 +36,7 @@ from games.domino.rules import (
 )
 
 # بعد از این همه ثانیه بی‌تحرکی در نوبت، حرکت به‌صورت خودکار انجام می‌شود
-TURN_TIMEOUT_SECONDS = 20.0
+TURN_TIMEOUT_SECONDS = 30.0
 
 # اگر بازیکنی برای این همه ثانیه هیچ درخواستی نفرستد، غایب محسوب می‌شود
 DISCONNECT_TIMEOUT_SECONDS = 60.0
