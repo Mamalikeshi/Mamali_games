@@ -1,0 +1,4105 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
+
+    <title>دومینو</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            font-family: Tahoma, Arial, sans-serif;
+            background:
+                radial-gradient(circle at top, #214b68 0%, #102b3d 45%, #081923 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        button {
+            font-family: inherit;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            margin: auto;
+            padding: 14px;
+        }
+
+        .back-link {
+            position: fixed;
+            top: 14px;
+            right: 16px;
+            font-size: 13px;
+            color: #b9d2df;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .sound-toggle {
+            position: fixed;
+            top: 10px;
+            left: 16px;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 50;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 14px;
+            padding-top: 26px;
+        }
+
+        .header h1 {
+            margin: 4px 0;
+            font-size: 25px;
+        }
+
+        .header p {
+            margin: 5px 0;
+            color: #b9d2df;
+            font-size: 13px;
+        }
+
+        .card {
+            background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 18px;
+            padding: 15px;
+            margin-bottom: 13px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.2);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .input {
+            width: 100%;
+            border: 0;
+            outline: none;
+            border-radius: 12px;
+            padding: 13px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,.95);
+            color: #17232b;
+            font-size: 15px;
+        }
+
+        .btn {
+            width: 100%;
+            border: 0;
+            border-radius: 12px;
+            padding: 13px;
+            margin-top: 7px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            background: #29a9ea;
+            color: white;
+        }
+
+        .btn:active {
+            transform: scale(.98);
+        }
+
+        .btn.secondary {
+            background: #425b6a;
+        }
+
+        .btn.success {
+            background: #159447;
+        }
+
+        .btn.warning {
+            background: #d68a19;
+        }
+
+        .btn.danger {
+            background: #c53d3d;
+        }
+
+        .room-code {
+            text-align: center;
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            margin: 8px 0 15px;
+        }
+
+        .players {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .player {
+            background: rgba(0,0,0,.18);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .player-name {
+            font-weight: bold;
+            margin-bottom: 6px;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .ready {
+            font-size: 12px;
+            color: #8ee6a9;
+        }
+
+        .not-ready {
+            font-size: 12px;
+            color: #ffbd8b;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 12px;
+            background: rgba(0,0,0,.18);
+            color: #d8eaf3;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .turn-timer {
+            display: inline-block;
+            margin-right: 8px;
+            font-weight: bold;
+            color: #7ec8e3;
+        }
+
+        .turn-timer.urgent {
+            color: #ff6b5b;
+            animation: pulse-timer 0.6s infinite;
+        }
+
+        @keyframes pulse-timer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .4; }
+        }
+
+        .scores {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .table-header {
+            background:
+                linear-gradient(180deg, #3a2414 0%, #2a1a0e 100%);
+            border: 1px solid #5a3a20;
+            margin-bottom: 6px;
+        }
+
+        .score-box {
+            background: rgba(0,0,0,.22);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .score-name {
+            color: #b8cfdb;
+            font-size: 13px;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .score-number {
+            font-size: 27px;
+            font-weight: bold;
+        }
+
+        .target {
+            text-align: center;
+            color: #a9c4d1;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .game-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 7px;
+            margin-bottom: 12px;
+        }
+
+        .info-box {
+            background: rgba(0,0,0,.17);
+            border-radius: 10px;
+            padding: 8px 5px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .info-box strong {
+            display: block;
+            margin-top: 3px;
+            font-size: 14px;
+        }
+
+        .board {
+            position: relative;
+            min-height: 260px;
+            max-height: 420px;
+            background:
+                radial-gradient(ellipse at center, #1f7a4d 0%, #145a38 55%, #0d3f27 100%);
+            border: 8px solid #5a3a20;
+            box-shadow:
+                inset 0 0 30px rgba(0,0,0,0.5),
+                0 6px 18px rgba(0,0,0,0.5);
+            border-radius: 20px;
+            padding: 10px;
+            overflow-x: hidden;
+            overflow-y: auto;
+            direction: ltr;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .board::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .board::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,.3);
+            border-radius: 5px;
+        }
+
+        .board-label {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 12px;
+            color: rgba(255,255,255,.5);
+            direction: rtl;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .board-tiles {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .board-empty {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #d7f2e2;
+            font-size: 13px;
+            direction: rtl;
+            width: 100%;
+            text-align: center;
+        }
+
+        .tile {
+            width: 60px;
+            height: 34px;
+            background: linear-gradient(145deg, #ffffff, #f2efe8);
+            color: #151515;
+            border-radius: 7px;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: space-around;
+            box-shadow: 0 3px 7px rgba(0,0,0,.4);
+            direction: ltr;
+            user-select: none;
+            border: 1px solid rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+
+        .tile.vertical {
+            flex-direction: column;
+        }
+
+        .tile.vertical:not(.board-tile) {
+            width: 34px;
+            height: 60px;
+        }
+
+        .board-tile {
+            position: absolute;
+            width: 44px;
+            height: 25px;
+            border-radius: 5px;
+            flex-shrink: 0;
+            transition: left .15s, top .15s;
+        }
+
+        .board-tile.vertical {
+            width: 25px;
+            height: 44px;
+        }
+
+        .board-tile.selectable-end {
+            outline: 3px solid #ffd23c;
+            box-shadow: 0 0 12px rgba(255,210,60,.85);
+            cursor: pointer;
+            animation: pulse-end 0.9s infinite;
+        }
+
+        @keyframes pulse-end {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .tile-half {
+            width: 50%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 10%;
+        }
+
+        .tile.vertical .tile-half {
+            width: 100%;
+            height: 50%;
+        }
+
+        .pip {
+            width: 68%;
+            height: 68%;
+            margin: auto;
+            border-radius: 50%;
+            box-shadow: inset 0 -1px 1px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.25);
+        }
+
+        .tile-divider {
+            width: 1px;
+            height: 80%;
+            background: #444;
+            align-self: center;
+            flex-shrink: 0;
+        }
+
+        .tile.vertical .tile-divider {
+            width: 80%;
+            height: 1px;
+        }
+
+        .hand-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 13px 0 9px;
+        }
+
+        .hand .tile.selected {
+            transform: translateY(-6px);
+            outline: 3px solid #29a9ea;
+            box-shadow: 0 7px 15px rgba(0,0,0,.35);
+        }
+
+        .hand .tile.not-playable {
+            opacity: .45;
+        }
+
+        .opponent-hand {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0 13px;
+        }
+
+        .hand-card {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 700px;
+            margin: 0;
+            border-radius: 18px 18px 0 0;
+            background: rgba(13, 32, 46, .97);
+            backdrop-filter: blur(6px);
+            box-shadow: 0 -10px 25px rgba(0,0,0,.45);
+            z-index: 40;
+            padding-bottom: max(15px, env(safe-area-inset-bottom));
+        }
+
+        .hand-card-spacer {
+            height: 210px;
+        }
+
+        .hand {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            padding: 2px 2px 4px;
+        }
+
+        .hand .tile {
+            width: 58px;
+            height: 34px;
+            cursor: pointer;
+            transition: .15s;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .drag-ghost {
+            box-shadow: 0 12px 30px rgba(0,0,0,.55) !important;
+        }
+
+        .drop-zone {
+            outline: 3px dashed #ffd23c;
+            box-shadow: 0 0 10px rgba(255,210,60,.6);
+        }
+
+        .drop-hover {
+            outline: 3px solid #4cd964 !important;
+            box-shadow: 0 0 18px rgba(76,217,100,.9) !important;
+            transform: scale(1.12);
+        }
+
+        .board.drop-target-active {
+            outline: 3px dashed #ffd23c;
+        }
+
+        .board.drop-hover {
+            outline: 3px solid #4cd964;
+            box-shadow:
+                inset 0 0 30px rgba(0,0,0,0.5),
+                0 0 18px rgba(76,217,100,.7);
+        }
+
+        .back-tile {
+            width: 38px;
+            height: 52px;
+            border-radius: 6px;
+            background:
+                repeating-linear-gradient(
+                    45deg,
+                    #305c73,
+                    #305c73 4px,
+                    #23475a 4px,
+                    #23475a 8px
+                );
+            border: 1px solid rgba(255,255,255,.15);
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .actions .btn {
+            margin-top: 0;
+        }
+
+        .side-selection {
+            margin-top: 10px;
+            background: rgba(255,210,60,.15);
+            border: 1px solid rgba(255,210,60,.4);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            color: #ffe9a8;
+        }
+
+        .auto-status {
+            margin-top: 10px;
+            background: rgba(255,107,91,.15);
+            border: 1px solid rgba(255,107,91,.4);
+            border-radius: 14px;
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            color: #ffb3a8;
+        }
+
+        .message {
+            padding: 11px;
+            border-radius: 11px;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 13px;
+            background: rgba(0,0,0,.2);
+            color: #d8edf6;
+        }
+
+        .message.error {
+            background: rgba(190,50,50,.22);
+            color: #ffb1b1;
+        }
+
+        .message.success {
+            background: rgba(20,150,70,.22);
+            color: #a9f2bd;
+        }
+
+        .round-result {
+            text-align: center;
+            padding: 15px;
+            border-radius: 16px;
+            background: rgba(21,148,71,.15);
+            border: 1px solid rgba(100,255,150,.15);
+            margin-bottom: 12px;
+        }
+
+        .round-result h2 {
+            margin: 3px 0 10px;
+            font-size: 21px;
+        }
+
+        .round-result p {
+            margin: 6px 0;
+            color: #c5dbe4;
+            font-size: 13px;
+        }
+
+        .final-result {
+            text-align: center;
+            padding: 20px 10px;
+        }
+
+        .final-result .trophy {
+            font-size: 55px;
+            margin-bottom: 8px;
+        }
+
+        .final-result h2 {
+            font-size: 25px;
+            margin: 5px 0 10px;
+        }
+
+        .final-score {
+            font-size: 32px;
+            font-weight: bold;
+            margin: 12px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #9db7c4;
+        }
+
+        .small {
+            font-size: 11px;
+            color: #91aab6;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        @media (max-width: 350px) {
+            .hand .tile {
+                width: 50px;
+                height: 30px;
+            }
+
+            .players {
+                gap: 6px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="back-link" onclick="window.location.href='index.html'">⬅️ بازگشت به منو</div>
+
+<div class="sound-toggle" id="sound-toggle" onclick="toggleSound()">🔊</div>
+
+<div class="container">
+
+    <div class="header">
+        <h1>🎲 دومینو</h1>
+        <p>بازی دومینو — دو نفره</p>
+    </div>
+
+    <!-- پیام -->
+    <div id="message" class="message hidden"></div>
+
+    <!-- صفحه ورود -->
+    <section id="lobby">
+
+        <div class="card">
+
+            <input
+                id="username"
+                class="input"
+                type="text"
+                placeholder="اسمت رو بنویس"
+                maxlength="20"
+            >
+
+            <button
+                id="continueActiveButton"
+                class="btn"
+                style="display:none; background:#2e8b57; margin-bottom:10px;"
+                onclick="continueActiveGame()"
+            >
+                ▶️ ادامه بازی فعال
+            </button>
+
+            <button class="btn" onclick="handleNewGameClick()">
+                🎲 پیدا کردن حریف
+            </button>
+
+            <div class="status" id="matchmaking-status"></div>
+        </div>
+
+    </section>
+
+    <!-- اتاق انتظار -->
+    <section id="waiting" class="hidden">
+
+        <div class="card">
+
+            <div class="status">
+                منتظر بازیکن دوم هستیم...
+            </div>
+
+        </div>
+
+        <div class="card">
+
+            <h3>👥 بازیکنان</h3>
+
+            <div id="waitingPlayers" class="players">
+            </div>
+
+            <button
+                id="readyButton"
+                class="btn success"
+                onclick="readyPlayer()"
+            >
+                ✅ آماده‌ام
+            </button>
+
+            <button
+                id="startButton"
+                class="btn warning hidden"
+                onclick="startGame()"
+            >
+                ▶️ شروع بازی
+            </button>
+
+        </div>
+
+        <button class="btn secondary" onclick="leaveRoom()">
+            خروج
+        </button>
+
+    </section>
+
+    <!-- بازی -->
+    <section id="gameScreen" class="hidden">
+
+        <!-- امتیاز -->
+        <div class="card table-header">
+
+            <div class="scores">
+
+                <div class="score-box">
+                    <div id="player1Name" class="score-name">
+                        بازیکن ۱
+                    </div>
+
+                    <div id="player1Score" class="score-number">
+                        0
+                    </div>
+                </div>
+
+                <div class="score-box">
+                    <div id="player2Name" class="score-name">
+                        بازیکن ۲
+                    </div>
+
+                    <div id="player2Score" class="score-number">
+                        0
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="target">
+                هدف مسابقه: <strong id="matchTarget">101</strong> امتیاز
+            </div>
+
+            <div class="game-info">
+
+                <div class="info-box">
+                    دست
+                    <strong id="roundNumber">1</strong>
+                </div>
+
+                <div class="info-box">
+                    مهره‌های وسط
+                    <strong id="boardCount">0</strong>
+                </div>
+
+                <div class="info-box">
+                    باقی‌مانده
+                    <strong id="boneyardCount">14</strong>
+                </div>
+
+            </div>
+
+            <div id="turnStatus" class="status">
+                <span id="turnStatusText">در حال بارگذاری...</span>
+                <span id="turnTimerText" class="turn-timer"></span>
+            </div>
+
+        </div>
+
+        <!-- نتیجه دست -->
+        <div id="roundResult" class="card hidden">
+
+            <div class="round-result">
+
+                <h2 id="roundResultTitle">
+                    پایان دست
+                </h2>
+
+                <p id="roundResultText">
+                    -
+                </p>
+
+                <p id="roundPointsText">
+                    -
+                </p>
+
+            </div>
+
+            <button
+                id="nextRoundButton"
+                class="btn success"
+                onclick="startNextRound()"
+            >
+                🔄 شروع دست بعدی
+            </button>
+
+        </div>
+
+        <!-- نتیجه نهایی -->
+        <div id="finalResult" class="card hidden">
+
+            <div class="final-result">
+
+                <div class="trophy">
+                    🏆
+                </div>
+
+                <h2 id="finalWinnerName">
+                    برنده
+                </h2>
+
+                <div id="finalScore" class="final-score">
+                    -
+                </div>
+
+                <p id="finalMessage">
+                    مسابقه به پایان رسید.
+                </p>
+
+            </div>
+
+        </div>
+
+        <!-- تخته -->
+        <div class="card">
+
+            <div id="board" class="board">
+                <div class="board-label">
+                    🁫 زمین بازی
+                </div>
+                <div id="boardTiles" class="board-tiles">
+                    <div class="board-empty">
+                        هنوز مهره‌ای روی زمین نیست
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- دست حریف -->
+        <div class="card">
+
+            <div class="hand-title">
+                <strong>دست حریف</strong>
+                <span id="opponentCount">0 مهره</span>
+            </div>
+
+            <div id="opponentHand" class="opponent-hand">
+            </div>
+
+        </div>
+
+        <!-- دست خودم (ثابت پایین صفحه) -->
+        <div class="card hand-card">
+
+            <div class="hand-title">
+                <strong>🖐 مهره‌های شما</strong>
+                <span id="myCount">0 مهره</span>
+            </div>
+
+            <div id="hand" class="hand">
+            </div>
+
+            <div id="sideSelection" class="side-selection hidden">
+                👆 مهره‌ی انتهای زمین (سمت چپ یا راست) را که چشمک می‌زند لمس کنید
+            </div>
+
+            <div id="autoStatus" class="auto-status hidden">
+            </div>
+
+        </div>
+
+        <div class="hand-card-spacer"></div>
+
+    </section>
+
+</div>
+
+
+<script>
+
+    const API = "/api/domino";
+
+    let roomId = null;
+    let userId = null;
+    let username = null;
+
+    let selectedIndex = null;
+
+    let roomTimer = null;
+    let gameTimer = null;
+
+    let currentGame = null;
+    let currentRoom = null;
+    let currentHand = [];
+    let lastBoardTileCount = null;
+    let lastOpponentHandCount = null;
+    let lastKnownRoundNumber = null;
+
+    /*
+     * نمایش ۴ ثانیه‌ای مهره‌های هر دو طرف وقتی دست تمام می‌شود
+     */
+    let revealEndAt = null;
+    let revealTimeoutHandle = null;
+    let wasRoundFinished = false;
+
+    /*
+     * Telegram
+     */
+    const tg = window.Telegram && window.Telegram.WebApp
+        ? window.Telegram.WebApp
+        : null;
+
+    if (tg) {
+        tg.ready();
+        tg.expand();
+    }
+
+
+    /*
+     * صدا
+     */
+    let soundMuted = localStorage.getItem("mamali_sound_muted") === "1";
+    document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+
+    function toggleSound() {
+        soundMuted = !soundMuted;
+        localStorage.setItem("mamali_sound_muted", soundMuted ? "1" : "0");
+        document.getElementById("sound-toggle").innerText = soundMuted ? "🔇" : "🔊";
+    }
+
+    let sharedAudioCtx = null;
+    function getAudioCtx() {
+        if (!sharedAudioCtx) {
+            sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        return sharedAudioCtx;
+    }
+
+    function playTileSound() {
+        if (soundMuted) return;
+        try {
+            const ctx = getAudioCtx();
+            const bufferSize = ctx.sampleRate * 0.12;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            }
+            const noise = ctx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = ctx.createBiquadFilter();
+            filter.type = "bandpass";
+            filter.frequency.value = 1800;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.35, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(ctx.destination);
+            noise.start();
+        } catch (e) {}
+    }
+
+
+    /*
+     * کاربر تلگرام
+     */
+    function getTelegramUser() {
+
+        if (
+            tg &&
+            tg.initDataUnsafe &&
+            tg.initDataUnsafe.user
+        ) {
+
+            return tg.initDataUnsafe.user;
+        }
+
+        return null;
+    }
+
+
+    /*
+     * ساخت ID مهمان
+     */
+    function guestId() {
+
+        let id = localStorage.getItem("domino_guest_id");
+
+        if (!id) {
+
+            id = String(
+                Math.floor(Math.random() * 1000000000)
+            );
+
+            localStorage.setItem(
+                "domino_guest_id",
+                id
+            );
+        }
+
+        return id;
+    }
+
+
+    /*
+     * مقداردهی اولیه کاربر
+     */
+    function initializeUser() {
+
+        const telegramUser = getTelegramUser();
+
+        if (telegramUser) {
+
+            userId = parseInt(telegramUser.id);
+
+            username =
+                telegramUser.first_name ||
+                telegramUser.username ||
+                "بازیکن";
+
+        } else {
+
+            userId = parseInt(guestId());
+
+            username = "بازیکن مهمان";
+        }
+
+        document.getElementById(
+            "username"
+        ).value = username;
+    }
+
+
+    /*
+     * پیام
+     */
+    function showMessage(text, type = "") {
+
+        const el =
+            document.getElementById("message");
+
+        el.textContent = text;
+
+        el.className =
+            "message" +
+            (type ? " " + type : "");
+
+        el.classList.remove("hidden");
+
+        setTimeout(() => {
+
+            el.classList.add("hidden");
+
+        }, 3500);
+    }
+
+
+    /*
+     * درخواست API
+     */
+    async function apiRequest(
+        url,
+        options = {}
+    ) {
+
+        try {
+
+            const response =
+                await fetch(url, {
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    ...options
+
+                });
+
+            let data = null;
+
+            try {
+                data = await response.json();
+            } catch {
+                data = {};
+            }
+
+            if (!response.ok) {
+
+                throw new Error(
+                    data.detail ||
+                    data.message ||
+                    "خطا در ارتباط با سرور"
+                );
+            }
+
+            return data;
+
+        } catch (error) {
+
+            console.error(error);
+
+            throw error;
+        }
+    }
+
+
+    /*
+     * نمایش صفحه
+     */
+    function showScreen(screen) {
+
+        document
+            .getElementById("lobby")
+            .classList.add("hidden");
+
+        document
+            .getElementById("waiting")
+            .classList.add("hidden");
+
+        document
+            .getElementById("gameScreen")
+            .classList.add("hidden");
+
+        document
+            .getElementById(screen)
+            .classList.remove("hidden");
+    }
+
+
+    /*
+     * پیدا کردن حریف تصادفی
+     */
+    let matchmakingTimer = null;
+    let activeRoomId = null;
+
+    /*
+     * اگه کاربر بازیِ فعالِ نیمه‌کاره داشته باشه، به‌جای پرش
+     * خودکار، دکمه‌ی «ادامه بازی فعال» رو نشون می‌دیم (دقیقاً
+     * مثل حکم و چهاربرگ) تا خودش انتخاب کنه
+     */
+    async function checkForActiveRoom() {
+
+        try {
+
+            const res = await apiRequest(
+                `${API}/room/my-active/${encodeURIComponent(userId)}`
+            );
+
+            if (!res.success || !res.room_id) {
+                return;
+            }
+
+            const room = res.room;
+
+            if (!room || !room.is_started) {
+                return;
+            }
+
+            const gameCheck = await apiRequest(
+                `${API}/rooms/${encodeURIComponent(res.room_id)}/game?user_id=${encodeURIComponent(userId)}`
+            );
+
+            if (
+                gameCheck &&
+                gameCheck.game &&
+                gameCheck.game.match_finished
+            ) {
+                return;
+            }
+
+            activeRoomId = res.room_id;
+
+            const btn =
+                document.getElementById(
+                    "continueActiveButton"
+                );
+
+            if (btn) {
+                btn.style.display = "block";
+            }
+
+        } catch (error) {
+
+            console.error(
+                "checkForActiveRoom:",
+                error
+            );
+        }
+    }
+
+    function continueActiveGame() {
+
+        roomId = activeRoomId;
+
+        localStorage.setItem(
+            "domino_room_id",
+            roomId
+        );
+
+        showScreen("gameScreen");
+
+        startGamePolling();
+    }
+
+    async function handleNewGameClick() {
+
+        if (activeRoomId) {
+
+            const confirmed =
+                window.confirm(
+                    "شما بازی فعال دارید. اگر بازی جدید شروع کنید، بازی فعال شما بازنده اعلام می‌شود.\nآیا مطمئنید؟"
+                );
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+
+                await apiRequest(
+                    `${API}/game/forfeit`,
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            room_id: activeRoomId,
+                            user_id: userId
+                        })
+                    }
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "forfeit:",
+                    error
+                );
+            }
+
+            activeRoomId = null;
+
+            const btn =
+                document.getElementById(
+                    "continueActiveButton"
+                );
+
+            if (btn) {
+                btn.style.display = "none";
+            }
+        }
+
+        findRandomMatch();
+    }
+
+    async function findRandomMatch() {
+
+        const input = document.getElementById("username");
+
+        const name =
+            input.value.trim() ||
+            username ||
+            "بازیکن";
+
+        username = name;
+
+        document.getElementById(
+            "matchmaking-status"
+        ).innerText = "در حال جستجوی حریف...";
+
+        clearInterval(matchmakingTimer);
+
+        matchmakingTimer = setInterval(
+            pollMatchmaking,
+            2000
+        );
+
+        pollMatchmaking();
+    }
+
+    async function pollMatchmaking() {
+
+        try {
+
+            const data = await apiRequest(
+                `${API}/matchmaking/find`,
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        user_id: userId,
+                        username: username
+                    })
+                }
+            );
+
+            if (data.matched) {
+
+                clearInterval(matchmakingTimer);
+
+                roomId = String(data.room_id);
+
+                localStorage.setItem(
+                    "domino_room_id",
+                    roomId
+                );
+
+                showScreen("waiting");
+
+                startRoomPolling();
+
+                await refreshRoom();
+            }
+
+        } catch (error) {
+
+            clearInterval(matchmakingTimer);
+
+            document.getElementById(
+                "matchmaking-status"
+            ).innerText = "❌ " + error.message;
+        }
+    }
+
+
+    /*
+     * دریافت اتاق
+     */
+    async function refreshRoom() {
+
+        if (!roomId) {
+            return;
+        }
+
+        try {
+
+            const data =
+                await apiRequest(
+                    `${API}/rooms/${encodeURIComponent(roomId)}`
+                );
+
+            currentRoom = data;
+
+            renderWaitingRoom(data);
+
+            /*
+             * اگر بازی شروع شده
+             */
+            const started =
+                data.is_started === true ||
+                data.game_started === true;
+
+            if (started) {
+
+                stopRoomPolling();
+
+                showScreen("gameScreen");
+
+                startGamePolling();
+
+                await refreshGame();
+            }
+
+        } catch (error) {
+
+            console.error(
+                "refreshRoom:",
+                error
+            );
+        }
+    }
+
+
+    /*
+     * نمایش اتاق
+     */
+    function renderWaitingRoom(data) {
+
+        const players =
+            Array.isArray(data.players)
+                ? data.players
+                : [];
+
+        const container =
+            document.getElementById(
+                "waitingPlayers"
+            );
+
+        container.innerHTML = "";
+
+        players.forEach((player) => {
+
+            const div =
+                document.createElement("div");
+
+            div.className = "player";
+
+            const name =
+                player.username ||
+                player.name ||
+                player.user_id ||
+                "بازیکن";
+
+            const ready =
+                player.is_ready === true;
+
+            div.innerHTML = `
+                <div class="player-name">
+                    ${escapeHtml(name)}
+                </div>
+
+                <div class="${
+                    ready
+                        ? "ready"
+                        : "not-ready"
+                }">
+                    ${
+                        ready
+                            ? "✅ آماده"
+                            : "⏳ آماده نیست"
+                    }
+                </div>
+            `;
+
+            container.appendChild(div);
+        });
+
+
+        /*
+         * دکمه آماده
+         */
+        const me =
+            players.find(
+                p =>
+                    String(p.user_id) ===
+                    String(userId)
+            );
+
+        if (
+            me &&
+            me.is_ready === true
+        ) {
+
+            document.getElementById(
+                "readyButton"
+            ).classList.add("hidden");
+
+        } else {
+
+            document.getElementById(
+                "readyButton"
+            ).classList.remove("hidden");
+        }
+
+
+        /*
+         * شروع بازی
+         */
+        const allReady =
+            players.length === 2 &&
+            players.every(
+                p => p.is_ready === true
+            );
+
+        const startButton =
+            document.getElementById(
+                "startButton"
+            );
+
+        if (allReady) {
+
+            startButton.classList.remove(
+                "hidden"
+            );
+
+        } else {
+
+            startButton.classList.add(
+                "hidden"
+            );
+        }
+    }
+
+
+    /*
+     * آماده شدن
+     */
+    async function readyPlayer() {
+
+        if (!roomId) {
+            return;
+        }
+
+        try {
+
+            await apiRequest(
+                `${API}/rooms/${encodeURIComponent(roomId)}/ready/${encodeURIComponent(userId)}`,
+                {
+                    method: "POST"
+                }
+            );
+
+            await refreshRoom();
+
+        } catch (error) {
+
+            showMessage(
+                error.message,
+                "error"
+            );
+        }
+    }
+
+
+    /*
+     * شروع بازی
+     */
+    async function startGame() {
+
+        try {
+
+            await apiRequest(
+                `${API}/rooms/${encodeURIComponent(roomId)}/start`,
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        user_id: userId
+                    })
+                }
+            );
+
+            stopRoomPolling();
+
+            showScreen("gameScreen");
+
+            startGamePolling();
+
+            await refreshGame();
+
+        } catch (error) {
+
+            showMessage(
+                error.message,
+                "error"
+            );
+
+            /*
+             * ممکن است بازیکن دیگر
+             * زودتر بازی را شروع کرده باشد.
+             */
+            await refreshRoom();
+        }
+    }
+
+
+    /*
+     * polling اتاق
+     */
+    function startRoomPolling() {
+
+        stopRoomPolling();
+
+        refreshRoom();
+
+        roomTimer =
+            setInterval(
+                refreshRoom,
+                1500
+            );
+    }
+
+
+    function stopRoomPolling() {
+
+        if (roomTimer) {
+
+            clearInterval(roomTimer);
+
+            roomTimer = null;
+        }
+    }
+
+
+    /*
+     * polling بازی
+     */
+    function startGamePolling() {
+
+        stopGamePolling();
+
+        refreshGame();
+
+        gameTimer =
+            setInterval(
+                refreshGame,
+                1200
+            );
+    }
+
+
+    function stopGamePolling() {
+
+        if (gameTimer) {
+
+            clearInterval(gameTimer);
+
+            gameTimer = null;
+        }
+    }
+
+
+    /*
+     * دریافت بازی
+     */
+    async function refreshGame() {
+
+        if (!roomId) {
+            return;
+        }
+
+        try {
+
+            const data =
+                await apiRequest(
+                    `${API}/rooms/${encodeURIComponent(roomId)}/game?user_id=${encodeURIComponent(userId)}`
+                );
+
+            currentGame =
+                data.game ||
+                data;
+
+            renderGame(
+                currentGame
+            );
+
+            await refreshHand();
+
+        } catch (error) {
+
+            console.error(
+                "refreshGame:",
+                error
+            );
+        }
+    }
+
+
+    /*
+     * نمایش بازی
+     */
+    function renderGame(game) {
+
+        if (!game) {
+            return;
+        }
+
+
+        /*
+         * وقتی دستِ جدیدی شروع می‌شه (مهره‌ها از نو پخش می‌شن)،
+         * شمارشِ مهره‌های حریف رو ریست کن تا جهشِ طبیعیِ ۰ به ۷
+         * به‌اشتباه به‌عنوان «رفتن به بازار» گزارش نشه
+         */
+        if (
+            game.round_number !==
+            lastKnownRoundNumber
+        ) {
+
+            lastOpponentHandCount = null;
+
+            lastKnownRoundNumber =
+                game.round_number;
+        }
+
+
+        /*
+         * تشخیص لحظه‌ی تمام‌شدنِ دست، برای نمایش ۴ ثانیه‌ای
+         * مهره‌های هر دو بازیکن (فقط وقتی سرور hands رو فرستاده)
+         */
+        const roundSummary =
+            game.last_round_summary || {};
+
+        if (
+            game.round_finished === true &&
+            !wasRoundFinished
+        ) {
+
+            if (roundSummary.hands) {
+
+                revealEndAt =
+                    Date.now() + 4000;
+
+                if (revealTimeoutHandle) {
+                    clearTimeout(
+                        revealTimeoutHandle
+                    );
+                }
+
+                revealTimeoutHandle =
+                    setTimeout(() => {
+
+                        revealEndAt = null;
+
+                        if (currentGame) {
+                            renderGame(
+                                currentGame
+                            );
+                        }
+
+                    }, 4000);
+
+            } else {
+
+                revealEndAt = null;
+            }
+        }
+
+        if (game.round_finished !== true) {
+
+            revealEndAt = null;
+
+            if (revealTimeoutHandle) {
+                clearTimeout(
+                    revealTimeoutHandle
+                );
+                revealTimeoutHandle = null;
+            }
+        }
+
+        wasRoundFinished =
+            game.round_finished === true;
+
+
+        /*
+         * امتیازها
+         */
+        const scores =
+            game.scores || {};
+
+        /*
+         * پیدا کردن نام بازیکنان
+         * (از player_a/player_b که واقعاً از سرور می‌آد،
+         * نه از فیلدِ غیرموجودِ game.players)
+         */
+        const p1 = game.player_a || null;
+        const p2 = game.player_b || null;
+
+        const player1Name =
+            p1?.username ||
+            p1?.name ||
+            Object.keys(scores)[0] ||
+            "بازیکن ۱";
+
+        const player2Name =
+            p2?.username ||
+            p2?.name ||
+            Object.keys(scores)[1] ||
+            "بازیکن ۲";
+
+
+        document.getElementById(
+            "player1Name"
+        ).textContent =
+            player1Name;
+
+        document.getElementById(
+            "player2Name"
+        ).textContent =
+            player2Name;
+
+
+        /*
+         * score ممکن است با user_id باشد
+         */
+        const ids =
+            Object.keys(scores);
+
+        const score1 =
+            ids.length > 0
+                ? Number(scores[ids[0]] || 0)
+                : 0;
+
+        const score2 =
+            ids.length > 1
+                ? Number(scores[ids[1]] || 0)
+                : 0;
+
+
+        document.getElementById(
+            "player1Score"
+        ).textContent =
+            score1;
+
+        document.getElementById(
+            "player2Score"
+        ).textContent =
+            score2;
+
+
+        document.getElementById(
+            "matchTarget"
+        ).textContent =
+            game.match_target_score ||
+            101;
+
+
+        document.getElementById(
+            "roundNumber"
+        ).textContent =
+            game.round_number ||
+            1;
+
+
+        /*
+         * state
+         */
+        const state =
+            game.state || {};
+
+        const boardTiles =
+            state.board_tiles ||
+            state.board ||
+            [];
+
+        if (
+            lastBoardTileCount !== null &&
+            boardTiles.length > lastBoardTileCount
+        ) {
+            playTileSound();
+        }
+        lastBoardTileCount = boardTiles.length;
+
+
+        document.getElementById(
+            "boardCount"
+        ).textContent =
+            boardTiles.length;
+
+
+        document.getElementById(
+            "boneyardCount"
+        ).textContent =
+            game.boneyard_remaining ??
+            game.boneyard_count ??
+            0;
+
+
+        renderBoard(boardTiles);
+
+        renderTurn(game);
+
+        renderRoundStatus(game);
+
+        renderOpponent(game);
+
+        renderAutoStatus(game);
+    }
+
+
+    /*
+     * نمایش تخته
+     */
+    function renderBoard(tiles) {
+
+        const board =
+            document.getElementById(
+                "board"
+            );
+
+        const container =
+            document.getElementById(
+                "boardTiles"
+            );
+
+        container.innerHTML = "";
+
+        if (
+            !Array.isArray(tiles) ||
+            tiles.length === 0
+        ) {
+
+            board.style.height = "";
+
+            container.innerHTML = `
+                <div class="board-empty">
+                    هنوز مهره‌ای روی زمین نیست
+                </div>
+            `;
+
+            return;
+        }
+
+
+        /*
+         * چیدمانِ «مارپیچ» با رعایت قانون واقعیِ دومینو:
+         * هر مهره‌ی جفت (دوبل) همیشه به‌صورت عمودی نمایش داده
+         * می‌شه و همیشه نقطه‌ی چرخش مسیره — یعنی بعد از هر
+         * دوبل، ردیف تموم می‌شه و ردیفِ بعدی دقیقاً از زیرِ
+         * مرکز همون دوبل ادامه پیدا می‌کنه (مثل دومینوی واقعی
+         * که مهره‌های بعدی به وسط دوبل می‌چسبن، نه لبه‌ش).
+         * اگه قبل از رسیدن به دوبل هم عرض ردیف تموم بشه، ردیف
+         * به‌خاطر کمبود جا می‌شکنه (و آخرین مهره‌ش عمودی می‌شه).
+         *
+         * نکته‌ی مهم: در ردیف‌هایی که جهتشون از راست‌به‌چپ
+         * برگشته، برای اینکه نقطه‌های دو مهره‌ی کناری هم درست
+         * به‌هم بچسبن، محتوای مهره را آینه (چپ↔راست) می‌کنیم.
+         */
+        const RATIO = 0.58;
+        const LONG = 44;
+        const SHORT = LONG * RATIO;
+        const GAP = 2;
+        const ROW_GAP = 6;
+        const MIN_BOARD_CONTENT_HEIGHT = 232;
+
+        const isDoubleTile = (t) =>
+            t.is_double === true ||
+            t.left === t.right;
+
+        const containerWidth =
+            (board.clientWidth || 320) -
+            2;
+
+
+        /*
+         * گام ۱: تقسیم مهره‌ها به ردیف‌ها
+         */
+        const rows = [];
+        let i = 0;
+
+        while (i < tiles.length) {
+
+            let rowWidth = 0;
+            const row = [];
+
+            while (i < tiles.length) {
+
+                const tile = tiles[i];
+                const isDouble =
+                    isDoubleTile(tile);
+
+                const w =
+                    (isDouble ? SHORT : LONG) +
+                    GAP;
+
+                if (
+                    row.length > 0 &&
+                    rowWidth + w > containerWidth
+                ) {
+                    break;
+                }
+
+                row.push({
+                    tile,
+                    isDouble,
+                    forceVertical: false,
+                    isChainEnd: false,
+                    masterIndex: i
+                });
+
+                rowWidth += w;
+                i++;
+
+                /*
+                 * توجه: دیگه دوبل رو مجبور به شکستن ردیف
+                 * نمی‌کنیم. دوبل فقط جای کمتری می‌گیره (چون
+                 * عمودیه) ولی مهره‌ی بعدی همچنان کنارش، در
+                 * همون ردیف، ادامه پیدا می‌کنه — دقیقاً همون
+                 * چیزی که خواسته شده بود. ردیف فقط وقتی واقعاً
+                 * جا کم بیاره می‌شکنه.
+                 */
+            }
+
+            if (
+                i < tiles.length &&
+                row.length > 0
+            ) {
+
+                const last =
+                    row[row.length - 1];
+
+                /*
+                 * فارغ از اینکه ردیف به‌خاطر رسیدن به دوبل
+                 * تموم شده یا به‌خاطر کمبود عرض، آخرین مهره‌ی
+                 * این ردیف نقطه‌ی چرخشه و ردیف بعدی باید
+                 * دقیقاً زیرِ مرکز همین مهره ادامه پیدا کنه —
+                 * وگرنه مسیر بی‌دلیل وسط زمین می‌پره و نامرتب
+                 * به‌نظر می‌رسه
+                 */
+                last.isChainEnd = true;
+
+                if (!last.isDouble) {
+
+                    rowWidth =
+                        rowWidth -
+                        (LONG + GAP) +
+                        (SHORT + GAP);
+
+                    last.forceVertical = true;
+                }
+            }
+
+            rows.push({
+                items: row,
+                width: Math.max(
+                    0,
+                    rowWidth - GAP
+                )
+            });
+        }
+
+
+        /*
+         * گام ۲: چیدن مهره‌ها. ردیف اول وسط‌چینِ کلِ زمینه؛
+         * ردیف‌های بعدی، اگه ردیفِ قبلی با یک دوبل تموم شده
+         * باشه، دقیقاً زیرِ مرکزِ همون دوبل شروع می‌شن.
+         */
+        const fragment =
+            document.createDocumentFragment();
+
+        let y = 0;
+        let dir = 1;
+        let alignCenterX = null;
+
+        rows.forEach((row) => {
+
+            const displayItems =
+                dir === 1
+                    ? row.items
+                    : row.items.slice().reverse();
+
+            const anchorItem =
+                row.items[0];
+
+            const anchorWidth =
+                (
+                    anchorItem.isDouble ||
+                    anchorItem.forceVertical
+                )
+                    ? SHORT
+                    : LONG;
+
+            let startX;
+
+            if (alignCenterX !== null) {
+
+                startX =
+                    dir === 1
+                        ? alignCenterX -
+                          anchorWidth / 2
+                        : alignCenterX -
+                          row.width +
+                          anchorWidth / 2;
+
+                startX = Math.max(
+                    0,
+                    Math.min(
+                        containerWidth -
+                            row.width,
+                        startX
+                    )
+                );
+
+            } else {
+
+                startX =
+                    Math.max(
+                        0,
+                        (containerWidth -
+                            row.width) / 2
+                    );
+            }
+
+            let x = startX;
+            let rowMaxHeight = SHORT;
+            let turnCenterX = null;
+
+            displayItems.forEach((item) => {
+
+                const {
+                    tile,
+                    isDouble,
+                    forceVertical,
+                    isChainEnd,
+                    masterIndex
+                } = item;
+
+                const vertical =
+                    isDouble || forceVertical;
+
+                const tileWidth =
+                    vertical ? SHORT : LONG;
+
+                const tileHeight =
+                    vertical ? LONG : SHORT;
+
+                rowMaxHeight = Math.max(
+                    rowMaxHeight,
+                    tileHeight
+                );
+
+                const displayTile =
+                    dir === -1
+                        ? {
+                              left: tile.right,
+                              right: tile.left,
+                              is_double: tile.is_double
+                          }
+                        : tile;
+
+                const el =
+                    createTileElement(
+                        displayTile,
+                        false,
+                        null,
+                        true
+                    );
+
+                if (vertical) {
+                    el.classList.add(
+                        "vertical"
+                    );
+                }
+
+                el.style.width =
+                    `${tileWidth}px`;
+
+                el.style.height =
+                    `${tileHeight}px`;
+
+                el.style.position =
+                    "absolute";
+
+                el.style.left =
+                    `${x}px`;
+
+                el.style.top =
+                    `${y}px`;
+
+                /*
+                 * این ویژگی‌ها برای این هستن که وقتی مهره‌ای
+                 * از هر دو طرف قابل‌بازیه، بتونیم مطمئن و
+                 * دقیق مهره‌ی واقعیِ انتهای چپ/راستِ زنجیره رو
+                 * (فارغ از اینکه در کدوم ردیف/جهت چیده شده)
+                 * برای لمس مستقیم مشخص کنیم
+                 */
+                if (masterIndex === 0) {
+                    el.dataset.chainLeft =
+                        "1";
+                }
+
+                if (
+                    masterIndex ===
+                    tiles.length - 1
+                ) {
+                    el.dataset.chainRight =
+                        "1";
+                }
+
+                fragment.appendChild(el);
+
+                if (isChainEnd) {
+                    turnCenterX =
+                        x + tileWidth / 2;
+                }
+
+                x += tileWidth + GAP;
+            });
+
+            y += rowMaxHeight + ROW_GAP;
+
+            const lastChainItem =
+                row.items[
+                    row.items.length - 1
+                ];
+
+            /*
+             * فارغ از اینکه ردیفِ قبل به‌خاطر برخورد با یک
+             * دوبل تموم شده یا فقط به‌خاطر کمبود عرض (و در
+             * نتیجه آخرین مهره‌ش به‌زور عمودی شده)، ردیفِ بعدی
+             * همیشه باید دقیقاً زیرِ همون نقطه‌ی چرخش ادامه پیدا
+             * کنه — وگرنه مسیر بی‌دلیل به وسطِ زمین می‌پره و
+             * نامرتب به‌نظر می‌رسه
+             */
+            alignCenterX =
+                (
+                    lastChainItem &&
+                    lastChainItem.isChainEnd &&
+                    turnCenterX !== null
+                )
+                    ? turnCenterX
+                    : null;
+
+            dir = -dir;
+        });
+
+
+        /*
+         * اگر کل محتوا کوتاه‌تر از ارتفاعِ دلخواهِ میزه (مثلاً
+         * وقتی فقط یکی-دو مهره روی زمینه)، عمودی هم وسط‌چینش
+         * می‌کنیم تا اولین مهره دقیقاً وسط زمین بیفته
+         */
+        const contentHeight =
+            Math.max(0, y - ROW_GAP);
+
+        const verticalOffset =
+            contentHeight <
+            MIN_BOARD_CONTENT_HEIGHT
+                ? (
+                      MIN_BOARD_CONTENT_HEIGHT -
+                      contentHeight
+                  ) / 2
+                : 0;
+
+        if (verticalOffset > 0) {
+
+            fragment
+                .querySelectorAll(
+                    ".tile"
+                )
+                .forEach((el) => {
+
+                    const currentTop =
+                        parseFloat(
+                            el.style.top ||
+                            "0"
+                        );
+
+                    el.style.top =
+                        `${currentTop + verticalOffset}px`;
+                });
+        }
+
+        container.appendChild(fragment);
+
+        board.style.height =
+            `${Math.max(
+                MIN_BOARD_CONTENT_HEIGHT,
+                contentHeight
+            ) + 20}px`;
+    }
+
+
+    /*
+     * الگوی نقطه‌ها و رنگ هر عدد (مطابق ست دومینوی رنگی)
+     */
+    const PIP_LAYOUTS = {
+        0: [],
+        1: [[2, 2]],
+        2: [[1, 1], [3, 3]],
+        3: [[1, 1], [2, 2], [3, 3]],
+        4: [[1, 1], [1, 3], [3, 1], [3, 3]],
+        5: [[1, 1], [1, 3], [2, 2], [3, 1], [3, 3]],
+        6: [[1, 1], [2, 1], [3, 1], [1, 3], [2, 3], [3, 3]]
+    };
+
+    const PIP_COLORS = {
+        1: "#7ec8e3",
+        2: "#4caf50",
+        3: "#e53935",
+        4: "#757575",
+        5: "#1565c0",
+        6: "#fbc02d"
+    };
+
+    function buildTileHalf(value) {
+
+        const half =
+            document.createElement("div");
+
+        half.className = "tile-half";
+
+        const positions =
+            PIP_LAYOUTS[value] || [];
+
+        const color =
+            PIP_COLORS[value] || "#333";
+
+        positions.forEach(([row, col]) => {
+
+            const dot =
+                document.createElement("div");
+
+            dot.className = "pip";
+            dot.style.gridRow = String(row);
+            dot.style.gridColumn = String(col);
+            dot.style.background = color;
+
+            half.appendChild(dot);
+        });
+
+        return half;
+    }
+
+
+    /*
+     * ساخت DOM مهره
+     */
+    function createTileElement(
+        tile,
+        clickable = false,
+        index = null,
+        onBoard = false
+    ) {
+
+        const div =
+            document.createElement("div");
+
+        div.className = "tile";
+
+        if (clickable) {
+
+            div.dataset.index =
+                String(index);
+
+            /*
+             * onclick اینجا تنظیم نمی‌شه؛ سیستم کشیدن‌ورهاکردن
+             * (attachDragHandlers) هم لمسِ سادهِ بدون جابه‌جایی
+             * (تپ) و هم کشیدن‌وانداختن روی زمین رو مدیریت می‌کنه
+             */
+        }
+
+
+        const left =
+            tile.left ?? 0;
+
+        const right =
+            tile.right ?? 0;
+
+        const isDouble =
+            tile.is_double === true ||
+            left === right;
+
+        /*
+         * روی زمین بازی، مهره‌های جفتی (دوبل) عمود
+         * روی بقیه‌ی زنجیره چیده می‌شن؛ دقیقاً مثل
+         * دومینوی واقعی
+         */
+        if (onBoard && isDouble) {
+
+            div.classList.add("vertical");
+            div.classList.add("board-tile");
+
+        } else if (onBoard) {
+
+            div.classList.add("board-tile");
+        }
+
+
+        div.innerHTML = "";
+
+        div.appendChild(
+            buildTileHalf(left)
+        );
+
+        const divider =
+            document.createElement("div");
+
+        divider.className = "tile-divider";
+
+        div.appendChild(divider);
+
+        div.appendChild(
+            buildTileHalf(right)
+        );
+
+        return div;
+    }
+
+
+    /*
+     * دریافت دست
+     */
+    async function refreshHand() {
+
+        if (!roomId || !userId) {
+            return;
+        }
+
+        try {
+
+            const data =
+                await apiRequest(
+                    `${API}/rooms/${encodeURIComponent(roomId)}/hand/${encodeURIComponent(userId)}`
+                );
+
+            currentHand =
+                data.hand || [];
+
+            renderHand();
+
+        } catch (error) {
+
+            /*
+             * برای سازگاری با APIهای قدیمی
+             */
+            try {
+
+                const data =
+                    await apiRequest(
+                        `${API}/rooms/${encodeURIComponent(roomId)}/hand/${encodeURIComponent(userId)}`
+                    );
+
+                currentHand =
+                    data.hand || [];
+
+                renderHand();
+
+            } catch (secondError) {
+
+                console.error(
+                    "refreshHand:",
+                    secondError
+                );
+            }
+        }
+    }
+
+
+    /*
+     * نمایش دست
+     */
+    async function renderHand() {
+
+        const container =
+            document.getElementById(
+                "hand"
+            );
+
+        document.getElementById(
+            "myCount"
+        ).textContent =
+            `${currentHand.length} مهره`;
+
+
+        /*
+         * دریافت مهره‌های قابل بازی
+         * (بدون خالی‌کردن دست قبل از دریافت پاسخ،
+         * تا مهره‌ها موقع آپدیت دوره‌ای ناپدید نشوند)
+         */
+        let playableIndexes = [];
+
+        try {
+
+            const data =
+                await apiRequest(
+                    `${API}/rooms/${encodeURIComponent(roomId)}/playable/${encodeURIComponent(userId)}`
+                );
+
+            playableIndexes =
+                data.playable_indexes ||
+                [];
+
+        } catch (error) {
+
+            console.error(
+                "playable:",
+                error
+            );
+        }
+
+
+        const fragment =
+            document.createDocumentFragment();
+
+        currentHand.forEach(
+            (tile, index) => {
+
+                const el =
+                    createTileElement(
+                        tile,
+                        true,
+                        index
+                    );
+
+                attachDragHandlers(
+                    el,
+                    index
+                );
+
+                if (
+                    !playableIndexes.includes(
+                        index
+                    )
+                ) {
+
+                    el.classList.add(
+                        "not-playable"
+                    );
+                }
+
+                if (
+                    selectedIndex === index
+                ) {
+
+                    el.classList.add(
+                        "selected"
+                    );
+                }
+
+                fragment.appendChild(el);
+            }
+        );
+
+        container.innerHTML = "";
+        container.appendChild(fragment);
+    }
+
+
+    /*
+     * کشیدن‌ورهاکردنِ مهره (Drag & Drop)
+     * به‌جای «تپ روی مهره → تپ روی انتهای زمین که چشمک می‌زنه»،
+     * حالا می‌شه خودِ مهره رو نگه داشت، کشید سمت انتهایی که
+     * می‌خوایم، و همون‌جا رها کرد. تپِ سریع (بدون جابه‌جایی)
+     * هنوز هم مثل قبل کار می‌کنه (سیستم قدیمی به‌عنوان جایگزین
+     * باقی می‌مونه).
+     */
+    let dragState = null;
+
+    function attachDragHandlers(el, index) {
+
+        el.addEventListener(
+            "pointerdown",
+            (e) =>
+                onTileDragStart(
+                    e,
+                    index,
+                    el
+                )
+        );
+    }
+
+    function onTileDragStart(e, index, el) {
+
+        if (
+            el.classList.contains(
+                "not-playable"
+            )
+        ) {
+            return;
+        }
+
+        if (!currentGame) {
+            return;
+        }
+
+        const game = currentGame;
+
+        const state =
+            game.state || {};
+
+        const currentTurn =
+            state.current_turn;
+
+        if (
+            currentTurn !== null &&
+            currentTurn !== undefined &&
+            String(currentTurn) !==
+            String(userId)
+        ) {
+            return;
+        }
+
+        const tile =
+            currentHand[index];
+
+        if (!tile) {
+            return;
+        }
+
+        const boardTiles =
+            state.board_tiles ||
+            state.board ||
+            [];
+
+        const boardEmpty =
+            boardTiles.length === 0;
+
+        let canLeft = false;
+        let canRight = false;
+
+        if (!boardEmpty) {
+
+            const leftEnd =
+                state.left_end;
+
+            const rightEnd =
+                state.right_end;
+
+            canLeft =
+                tile.left === leftEnd ||
+                tile.right === leftEnd;
+
+            canRight =
+                tile.left === rightEnd ||
+                tile.right === rightEnd;
+
+            if (!canLeft && !canRight) {
+                return;
+            }
+        }
+
+        const rect =
+            el.getBoundingClientRect();
+
+        const ghost =
+            el.cloneNode(true);
+
+        ghost.classList.add(
+            "drag-ghost"
+        );
+
+        ghost.style.position = "fixed";
+        ghost.style.left =
+            `${rect.left}px`;
+        ghost.style.top =
+            `${rect.top}px`;
+        ghost.style.width =
+            `${rect.width}px`;
+        ghost.style.height =
+            `${rect.height}px`;
+        ghost.style.margin = "0";
+        ghost.style.pointerEvents =
+            "none";
+        ghost.style.zIndex = "999";
+        ghost.style.opacity = "0.92";
+        ghost.style.transform =
+            "scale(1.1)";
+
+        document.body.appendChild(
+            ghost
+        );
+
+        el.style.opacity = "0.25";
+
+        const leftZone =
+            !boardEmpty
+                ? document.querySelector(
+                      '[data-chain-left="1"]'
+                  )
+                : null;
+
+        const rightZone =
+            !boardEmpty
+                ? document.querySelector(
+                      '[data-chain-right="1"]'
+                  )
+                : null;
+
+        const boardEl =
+            document.getElementById(
+                "board"
+            );
+
+        dragState = {
+            index,
+            el,
+            ghost,
+            offsetX:
+                e.clientX - rect.left,
+            offsetY:
+                e.clientY - rect.top,
+            startX: e.clientX,
+            startY: e.clientY,
+            moved: false,
+            canLeft,
+            canRight,
+            boardEmpty,
+            leftZone,
+            rightZone,
+            boardEl,
+            /*
+             * مستطیل‌های نواحیِ رهاسازی رو همین یک‌بار، در لحظه‌ی
+             * شروعِ کشیدن، محاسبه می‌کنیم و در طول درگ دوباره
+             * حساب نمی‌کنیم — چون صدازدنِ مکررِ
+             * getBoundingClientRect روی هر حرکتِ انگشت خودش باعثِ
+             * کندی و دیرجواب‌دادنِ رهاسازی می‌شد
+             */
+            leftRect:
+                leftZone
+                    ? leftZone.getBoundingClientRect()
+                    : null,
+            rightRect:
+                rightZone
+                    ? rightZone.getBoundingClientRect()
+                    : null,
+            boardRect:
+                boardEl.getBoundingClientRect()
+        };
+
+        if (!boardEmpty) {
+
+            if (canLeft && leftZone) {
+                leftZone.classList.add(
+                    "drop-zone"
+                );
+            }
+
+            if (canRight && rightZone) {
+                rightZone.classList.add(
+                    "drop-zone"
+                );
+            }
+
+        } else {
+
+            boardEl.classList.add(
+                "drop-target-active"
+            );
+        }
+
+        window.addEventListener(
+            "pointermove",
+            onTileDragMove,
+            { passive: true }
+        );
+
+        window.addEventListener(
+            "pointerup",
+            onTileDragEnd
+        );
+
+        window.addEventListener(
+            "pointercancel",
+            onTileDragEnd
+        );
+    }
+
+    function onTileDragMove(e) {
+
+        if (!dragState) {
+            return;
+        }
+
+        const dx =
+            e.clientX - dragState.startX;
+
+        const dy =
+            e.clientY - dragState.startY;
+
+        if (
+            Math.abs(dx) > 6 ||
+            Math.abs(dy) > 6
+        ) {
+            dragState.moved = true;
+        }
+
+        dragState.ghost.style.left =
+            `${e.clientX - dragState.offsetX}px`;
+
+        dragState.ghost.style.top =
+            `${e.clientY - dragState.offsetY}px`;
+
+        updateDropHover(
+            e.clientX,
+            e.clientY
+        );
+    }
+
+    function updateDropHover(x, y) {
+
+        if (!dragState) {
+            return;
+        }
+
+        const {
+            leftZone,
+            rightZone,
+            boardEl,
+            leftRect,
+            rightRect,
+            boardRect
+        } = dragState;
+
+        if (leftZone) {
+            leftZone.classList.remove(
+                "drop-hover"
+            );
+        }
+
+        if (rightZone) {
+            rightZone.classList.remove(
+                "drop-hover"
+            );
+        }
+
+        boardEl.classList.remove(
+            "drop-hover"
+        );
+
+        const PAD = 24;
+
+        if (dragState.boardEmpty) {
+
+            if (
+                x >= boardRect.left - PAD &&
+                x <= boardRect.right + PAD &&
+                y >= boardRect.top - PAD &&
+                y <= boardRect.bottom + PAD
+            ) {
+                boardEl.classList.add(
+                    "drop-hover"
+                );
+            }
+
+            return;
+        }
+
+        if (
+            dragState.canLeft &&
+            leftZone &&
+            leftRect
+        ) {
+
+            if (
+                x >= leftRect.left - PAD &&
+                x <= leftRect.right + PAD &&
+                y >= leftRect.top - PAD &&
+                y <= leftRect.bottom + PAD
+            ) {
+                leftZone.classList.add(
+                    "drop-hover"
+                );
+            }
+        }
+
+        if (
+            dragState.canRight &&
+            rightZone &&
+            rightRect
+        ) {
+
+            if (
+                x >= rightRect.left - PAD &&
+                x <= rightRect.right + PAD &&
+                y >= rightRect.top - PAD &&
+                y <= rightRect.bottom + PAD
+            ) {
+                rightZone.classList.add(
+                    "drop-hover"
+                );
+            }
+        }
+    }
+
+    function clearDropZoneHighlights() {
+
+        document
+            .querySelectorAll(
+                ".drop-zone, .drop-hover, .drop-target-active"
+            )
+            .forEach((el) => {
+
+                el.classList.remove(
+                    "drop-zone",
+                    "drop-hover",
+                    "drop-target-active"
+                );
+            });
+    }
+
+    function onTileDragEnd(e) {
+
+        if (!dragState) {
+            return;
+        }
+
+        const {
+            index,
+            el,
+            ghost,
+            moved,
+            canLeft,
+            canRight,
+            boardEmpty,
+            leftZone,
+            rightZone,
+            leftRect,
+            rightRect,
+            boardRect
+        } = dragState;
+
+        window.removeEventListener(
+            "pointermove",
+            onTileDragMove
+        );
+
+        window.removeEventListener(
+            "pointerup",
+            onTileDragEnd
+        );
+
+        window.removeEventListener(
+            "pointercancel",
+            onTileDragEnd
+        );
+
+        ghost.remove();
+        el.style.opacity = "";
+
+        clearDropZoneHighlights();
+
+        dragState = null;
+
+        if (!moved) {
+
+            /*
+             * تپِ ساده (بدون جابه‌جایی) — رفتار قدیمیِ
+             * انتخاب‌کردنِ مهره
+             */
+            selectTile(index);
+
+            return;
+        }
+
+
+        const x = e.clientX;
+        const y = e.clientY;
+
+        if (boardEmpty) {
+
+            const r = boardRect;
+
+            if (
+                x >= r.left &&
+                x <= r.right &&
+                y >= r.top &&
+                y <= r.bottom
+            ) {
+
+                selectedIndex = index;
+
+                playSelected(null);
+            }
+
+            return;
+        }
+
+        const PAD = 24;
+
+        if (canLeft && leftZone && leftRect) {
+
+            const r = leftRect;
+
+            if (
+                x >= r.left - PAD &&
+                x <= r.right + PAD &&
+                y >= r.top - PAD &&
+                y <= r.bottom + PAD
+            ) {
+
+                selectedIndex = index;
+
+                playSelected("left");
+
+                return;
+            }
+        }
+
+        if (canRight && rightZone && rightRect) {
+
+            const r = rightRect;
+
+            if (
+                x >= r.left - PAD &&
+                x <= r.right + PAD &&
+                y >= r.top - PAD &&
+                y <= r.bottom + PAD
+            ) {
+
+                selectedIndex = index;
+
+                playSelected("right");
+
+                return;
+            }
+        }
+
+        /*
+         * اگه فقط یک طرف قابل‌بازی بود، رها کردن روی هر
+         * نقطه‌ای از خودِ زمین هم کافیه (نیازی به دقتِ
+         * پیکسلی روی مهره‌ی انتها نیست)
+         */
+        if (canLeft !== canRight) {
+
+            const r = boardRect;
+
+            if (
+                x >= r.left &&
+                x <= r.right &&
+                y >= r.top &&
+                y <= r.bottom
+            ) {
+
+                selectedIndex = index;
+
+                playSelected(
+                    canLeft ? "left" : "right"
+                );
+            }
+        }
+
+        /*
+         * رها نشد روی جای معتبر → لغو؛ چون ارجاع اصلی به
+         * خود مهره دست‌نخورده مونده، فقط شبح حذف شده و
+         * تمام
+         */
+    }
+
+
+    /*
+     * انتخاب مهره
+     */
+    function selectTile(index) {
+
+        if (!currentGame) {
+            return;
+        }
+
+        const game =
+            currentGame;
+
+        const state =
+            game.state || {};
+
+        const currentTurn =
+            state.current_turn;
+
+        if (
+            currentTurn !== null &&
+            currentTurn !== undefined &&
+            String(currentTurn) !==
+            String(userId)
+        ) {
+
+            showMessage(
+                "الان نوبت شما نیست.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        selectedIndex = index;
+
+        document
+            .getElementById(
+                "sideSelection"
+            )
+            .classList.add(
+                "hidden"
+            );
+
+        highlightBoardEnds(false);
+
+        document
+            .querySelectorAll(
+                "#hand .tile"
+            )
+            .forEach(
+                el =>
+                    el.classList.remove(
+                        "selected"
+                    )
+            );
+
+
+        const selected =
+            document.querySelector(
+                `#hand .tile[data-index="${index}"]`
+            );
+
+        if (selected) {
+
+            selected.classList.add(
+                "selected"
+            );
+        }
+
+
+        /*
+         * بررسی سمت‌ها
+         */
+        const tile =
+            currentHand[index];
+
+        if (!tile) {
+            return;
+        }
+
+        const boardTiles =
+            state.board_tiles ||
+            state.board ||
+            [];
+
+
+        if (
+            boardTiles.length === 0
+        ) {
+
+            playSelected(null);
+
+            return;
+        }
+
+
+        /*
+         * از left_end / right_end واقعیِ بازی استفاده می‌کنیم
+         * (نه محاسبه‌ی دستی از آرایه‌ی مهره‌ها، چون جهت مهره‌ی
+         * ذخیره‌شده لزوماً با جهت نمایش یکی نیست و باعث می‌شد
+         * بعضی مهره‌ها - مخصوصاً دوبل‌ها - قابل‌بازی تشخیص داده نشن)
+         */
+        const leftEnd =
+            state.left_end;
+
+        const rightEnd =
+            state.right_end;
+
+
+        const canLeft =
+            tile.left === leftEnd ||
+            tile.right === leftEnd;
+
+        const canRight =
+            tile.left === rightEnd ||
+            tile.right === rightEnd;
+
+
+        if (canLeft && canRight) {
+
+            document
+                .getElementById(
+                    "sideSelection"
+                )
+                .classList.remove(
+                    "hidden"
+                );
+
+            highlightBoardEnds(true);
+
+        } else if (canLeft) {
+
+            playSelected("left");
+
+        } else if (canRight) {
+
+            playSelected("right");
+
+        } else {
+
+            showMessage(
+                "این مهره در حال حاضر قابل بازی نیست.",
+                "error"
+            );
+        }
+    }
+
+
+    /*
+     * چشمک‌زدن دو سرِ زمین برای انتخاب مستقیم با لمس
+     * (به‌جای سؤال کردن چپ/راست)
+     */
+    function highlightBoardEnds(active) {
+
+        const board =
+            document.getElementById(
+                "board"
+            );
+
+        const tiles =
+            board.querySelectorAll(
+                ".tile"
+            );
+
+        tiles.forEach((el) => {
+
+            el.classList.remove(
+                "selectable-end"
+            );
+
+            el.onclick = null;
+
+            el.querySelectorAll(
+                ".tile-half"
+            ).forEach((half) => {
+                half.onclick = null;
+                half.style.cursor = "";
+            });
+        });
+
+        if (!active || tiles.length === 0) {
+            return;
+        }
+
+        /*
+         * به‌جای فرض کردنِ ترتیبِ DOM (که با چیدمانِ مارپیچ/
+         * چرخشِ دور دوبل‌ها دیگه با ترتیبِ واقعیِ زنجیره یکی
+         * نیست)، دقیقاً همون مهره‌ای که در renderBoard به‌عنوان
+         * انتهای واقعیِ چپ/راستِ زنجیره علامت‌گذاری شده رو پیدا
+         * می‌کنیم
+         */
+        const leftTile =
+            board.querySelector(
+                '[data-chain-left="1"]'
+            );
+
+        const rightTile =
+            board.querySelector(
+                '[data-chain-right="1"]'
+            );
+
+        /*
+         * حالت خاص: وقتی فقط یک مهره روی زمینه، همون یک مهره
+         * هم‌زمان «هر دو» انتهای زنجیره‌ست. چون فقط یک مهره‌ی
+         * تصویری داریم، نصفِ چپش رو برای سمت چپ و نصفِ راستش
+         * رو برای سمت راست، جدا لمس‌پذیر می‌کنیم
+         */
+        if (
+            leftTile &&
+            rightTile &&
+            leftTile === rightTile
+        ) {
+
+            leftTile.classList.add(
+                "selectable-end"
+            );
+
+            const halves =
+                leftTile.querySelectorAll(
+                    ".tile-half"
+                );
+
+            if (halves.length === 2) {
+
+                halves[0].style.cursor =
+                    "pointer";
+
+                halves[0].onclick = (e) => {
+                    e.stopPropagation();
+                    playSelected("left");
+                };
+
+                halves[1].style.cursor =
+                    "pointer";
+
+                halves[1].onclick = (e) => {
+                    e.stopPropagation();
+                    playSelected("right");
+                };
+
+            } else {
+
+                leftTile.onclick = () =>
+                    playSelected("left");
+            }
+
+            return;
+        }
+
+        if (leftTile) {
+
+            leftTile.classList.add(
+                "selectable-end"
+            );
+
+            leftTile.onclick = () =>
+                playSelected("left");
+        }
+
+        if (
+            rightTile &&
+            rightTile !== leftTile
+        ) {
+
+            rightTile.classList.add(
+                "selectable-end"
+            );
+
+            rightTile.onclick = () =>
+                playSelected("right");
+        }
+    }
+
+
+    /*
+     * بازی کردن مهره
+     */
+    async function playSelected(side) {
+
+        if (
+            selectedIndex === null ||
+            selectedIndex === undefined
+        ) {
+
+            showMessage(
+                "ابتدا یک مهره انتخاب کنید.",
+                "error"
+            );
+
+            return;
+        }
+
+
+        const body = {
+            user_id: userId,
+            tile_index: selectedIndex
+        };
+
+
+        if (side) {
+            body.side = side;
+        }
+
+
+        try {
+
+            await apiRequest(
+                `${API}/rooms/${encodeURIComponent(roomId)}/play`,
+                {
+                    method: "POST",
+
+                    body:
+                        JSON.stringify(body)
+                }
+            );
+
+
+            selectedIndex = null;
+
+            document
+                .getElementById(
+                    "sideSelection"
+                )
+                .classList.add(
+                    "hidden"
+                );
+
+            highlightBoardEnds(false);
+
+            await refreshGame();
+
+            showMessage(
+                "مهره بازی شد.",
+                "success"
+            );
+
+        } catch (error) {
+
+            showMessage(
+                error.message,
+                "error"
+            );
+        }
+    }
+
+
+    /*
+     * کشیدن مهره
+     */
+    /*
+     * نمایش نوبت + شمارش‌معکوس ۲۰ ثانیه‌ای
+     */
+    let turnTimerInterval = null;
+    let turnDeadlineClientMs = null;
+
+    function renderTurn(game) {
+
+        const state =
+            game.state || {};
+
+        const turn =
+            state.current_turn;
+
+        const textEl =
+            document.getElementById(
+                "turnStatusText"
+            );
+
+        const timerEl =
+            document.getElementById(
+                "turnTimerText"
+            );
+
+
+        if (
+            turn === null ||
+            turn === undefined
+        ) {
+
+            textEl.textContent =
+                "منتظر شروع بازی...";
+
+            timerEl.textContent = "";
+
+            turnDeadlineClientMs = null;
+
+            return;
+        }
+
+
+        if (
+            String(turn) ===
+            String(userId)
+        ) {
+
+            textEl.textContent =
+                "🎯 نوبت شماست";
+
+        } else {
+
+            textEl.textContent =
+                "⏳ نوبت بازیکن مقابل است";
+        }
+
+
+        /*
+         * محاسبه‌ی زمان باقی‌مانده با توجه به ساعت سرور
+         * (برای جلوگیری از خطای اختلاف ساعت دستگاه‌ها،
+         * فقط از "مدت گذشته" استفاده می‌کنیم نه زمان مطلق)
+         */
+        const timeoutSeconds =
+            state.turn_timeout_seconds ||
+            game.turn_timeout_seconds ||
+            20;
+
+        const startedAt =
+            state.turn_started_at;
+
+        if (typeof startedAt === "number") {
+
+            const elapsed =
+                (Date.now() / 1000) - startedAt;
+
+            const remaining =
+                Math.max(
+                    0,
+                    timeoutSeconds - elapsed
+                );
+
+            turnDeadlineClientMs =
+                Date.now() + remaining * 1000;
+
+        } else {
+
+            turnDeadlineClientMs = null;
+
+            timerEl.textContent = "";
+        }
+
+
+        if (!turnTimerInterval) {
+
+            turnTimerInterval =
+                setInterval(
+                    updateTurnTimerDisplay,
+                    500
+                );
+        }
+
+        updateTurnTimerDisplay();
+    }
+
+
+    function updateTurnTimerDisplay() {
+
+        const timerEl =
+            document.getElementById(
+                "turnTimerText"
+            );
+
+        if (
+            !timerEl ||
+            turnDeadlineClientMs === null
+        ) {
+
+            if (timerEl) {
+                timerEl.textContent = "";
+            }
+
+            return;
+        }
+
+        const remainingSeconds =
+            Math.max(
+                0,
+                Math.round(
+                    (turnDeadlineClientMs - Date.now()) / 1000
+                )
+            );
+
+        timerEl.textContent =
+            `⏱ ${remainingSeconds} ثانیه`;
+
+        timerEl.classList.toggle(
+            "urgent",
+            remainingSeconds <= 5
+        );
+    }
+
+
+    /*
+     * نمایش حریف
+     */
+    function renderOpponent(game) {
+
+        const container =
+            document.getElementById(
+                "opponentHand"
+            );
+
+        container.innerHTML = "";
+
+        /*
+         * تعداد مهره‌های حریف مستقیماً از player_a/player_b
+         * که از سرور می‌آد خونده می‌شه (hand_count)
+         */
+        let count = 0;
+        let opponentId = null;
+
+        const playerA = game.player_a;
+        const playerB = game.player_b;
+
+        if (
+            playerA &&
+            String(playerA.user_id) !==
+            String(userId)
+        ) {
+
+            count = playerA.hand_count || 0;
+            opponentId = playerA.user_id;
+
+        } else if (
+            playerB &&
+            String(playerB.user_id) !==
+            String(userId)
+        ) {
+
+            count = playerB.hand_count || 0;
+            opponentId = playerB.user_id;
+        }
+
+
+        document.getElementById(
+            "opponentCount"
+        ).textContent =
+            `${count} مهره`;
+
+
+        /*
+         * اگه تعداد مهره‌های حریف نسبت به دفعه‌ی قبل زیاد شده،
+         * یعنی از بازار کشیده — بهش اطلاع بده
+         */
+        if (
+            opponentId !== null &&
+            lastOpponentHandCount !== null &&
+            count > lastOpponentHandCount
+        ) {
+
+            showMessage(
+                "🎴 حریف به بازار رفت",
+                ""
+            );
+        }
+
+        if (opponentId !== null) {
+            lastOpponentHandCount = count;
+        }
+
+
+        /*
+         * در ۴ ثانیه‌ی بعد از پایان دست، اگر سرور مهره‌های
+         * واقعیِ هر دو طرف رو فرستاده باشه، به‌جای پشت‌مهره
+         * همون مهره‌های واقعیِ حریف رو نشون می‌دیم
+         */
+        const roundSummary =
+            game.last_round_summary || {};
+
+        const revealing =
+            revealEndAt !== null &&
+            Date.now() < revealEndAt &&
+            roundSummary.hands &&
+            opponentId !== null;
+
+        if (revealing) {
+
+            const opponentHand =
+                roundSummary.hands[
+                    opponentId
+                ] ||
+                roundSummary.hands[
+                    String(opponentId)
+                ] ||
+                [];
+
+            opponentHand.forEach((tile) => {
+
+                container.appendChild(
+                    createTileElement(
+                        tile,
+                        false,
+                        null,
+                        false
+                    )
+                );
+            });
+
+            return;
+        }
+
+
+        for (
+            let i = 0;
+            i < Number(count);
+            i++
+        ) {
+
+            const back =
+                document.createElement(
+                    "div"
+                );
+
+            back.className =
+                "back-tile";
+
+            container.appendChild(
+                back
+            );
+        }
+    }
+
+
+    /*
+     * نمایش وضعیتِ خودکار (در حال پاس / منتظر مهره‌ی قابل‌بازی)
+     */
+    function renderAutoStatus(game) {
+
+        const state =
+            game.state || {};
+
+        const isMyTurn =
+            String(
+                state.current_turn
+            ) === String(userId);
+
+        const statusEl =
+            document.getElementById(
+                "autoStatus"
+            );
+
+        if (
+            isMyTurn &&
+            state.pending_pass_at
+        ) {
+
+            statusEl.textContent =
+                "⏭ مهره‌ی قابل‌بازی ندارید — به‌زودی به‌صورت خودکار پاس داده می‌شود...";
+
+            statusEl.classList.remove(
+                "hidden"
+            );
+
+        } else {
+
+            statusEl.classList.add(
+                "hidden"
+            );
+        }
+    }
+
+
+    /*
+     * وضعیت دست
+     */
+    function renderRoundStatus(game) {
+
+        const roundResult =
+            document.getElementById(
+                "roundResult"
+            );
+
+        const finalResult =
+            document.getElementById(
+                "finalResult"
+            );
+
+        const nextButton =
+            document.getElementById(
+                "nextRoundButton"
+            );
+
+
+        roundResult.classList.add(
+            "hidden"
+        );
+
+        finalResult.classList.add(
+            "hidden"
+        );
+
+
+        /*
+         * تا وقتی مهره‌های هر دو طرف در حال نمایش (۴ ثانیه) هستن،
+         * کارت نتیجه‌ی دست/مسابقه رو نشون نده — بذار اول
+         * مهره‌های حریف (در بخش «دست حریف») دیده بشن
+         */
+        if (
+            revealEndAt !== null &&
+            Date.now() < revealEndAt
+        ) {
+
+            nextButton.classList.add(
+                "hidden"
+            );
+
+            return;
+        }
+
+
+        /*
+         * مسابقه تمام شده
+         */
+        if (
+            game.match_finished === true
+        ) {
+
+            finalResult.classList.remove(
+                "hidden"
+            );
+
+            const winner =
+                game.match_winner ||
+                game.winner ||
+                "نامشخص";
+
+            let winnerName =
+                getPlayerName(
+                    winner,
+                    game
+                );
+
+            document.getElementById(
+                "finalWinnerName"
+            ).textContent =
+                `🏆 ${winnerName}`;
+
+
+            const scores =
+                game.scores || {};
+
+            const winnerScore =
+                scores[winner] ??
+                scores[String(winner)] ??
+                "-";
+
+
+            document.getElementById(
+                "finalScore"
+            ).textContent =
+                `${winnerScore} امتیاز`;
+
+            const messageEl =
+                document.getElementById(
+                    "finalMessage"
+                );
+
+            if (game.forfeit === true) {
+
+                const isMe =
+                    String(winner) ===
+                    String(userId);
+
+                messageEl.textContent =
+                    isMe
+                        ? "حریف بازی را ترک کرد و برای مدتی برنگشت — شما برنده شدید! 🎉"
+                        : "شما بازی را ترک کردید و برنگشتید، بنابراین حریف برنده اعلام شد.";
+
+            } else {
+
+                messageEl.textContent =
+                    "مسابقه به پایان رسید.";
+            }
+
+            stopGamePolling();
+
+            return;
+        }
+
+
+        /*
+         * دست تمام شده
+         */
+        if (
+            game.round_finished === true
+        ) {
+
+            roundResult.classList.remove(
+                "hidden"
+            );
+
+
+            const winner =
+                game.round_winner;
+
+            const summary =
+                game.last_round_summary ||
+                {};
+
+
+            let title =
+                "پایان دست";
+
+            if (winner) {
+
+                title =
+                    `برنده دست: ${
+                        getPlayerName(
+                            winner,
+                            game
+                        )
+                    }`;
+            } else {
+
+                title =
+                    "دست مساوی شد";
+            }
+
+
+            document.getElementById(
+                "roundResultTitle"
+            ).textContent =
+                title;
+
+
+            let reason =
+                summary.reason === "blocked"
+                    ? "بازی به دلیل بسته شدن زمین تمام شد."
+                    : "بازیکن برنده، تمام مهره‌های دست خود را بازی کرد.";
+
+
+            document.getElementById(
+                "roundResultText"
+            ).textContent =
+                reason;
+
+
+            document.getElementById(
+                "roundPointsText"
+            ).textContent =
+                `امتیاز این دست: ${
+                    summary.points ??
+                    0
+                }`;
+
+
+            nextButton.classList.remove(
+                "hidden"
+            );
+
+            return;
+        }
+
+
+        /*
+         * بازی در حال انجام
+         */
+        nextButton.classList.add(
+            "hidden"
+        );
+    }
+
+
+    /*
+     * شروع دست بعدی
+     */
+    async function startNextRound() {
+
+        if (!roomId) {
+            return;
+        }
+
+        const button =
+            document.getElementById(
+                "nextRoundButton"
+            );
+
+        button.disabled = true;
+
+        try {
+
+            await apiRequest(
+                `${API}/rooms/${encodeURIComponent(roomId)}/next-round`,
+                {
+                    method: "POST",
+
+                    body: JSON.stringify({
+                        user_id: userId
+                    })
+                }
+            );
+
+            selectedIndex = null;
+
+            document
+                .getElementById(
+                    "sideSelection"
+                )
+                .classList.add(
+                    "hidden"
+                );
+
+            await refreshGame();
+
+            showMessage(
+                "دست بعدی شروع شد.",
+                "success"
+            );
+
+        } catch (error) {
+
+            /*
+             * ممکن است بازیکن مقابل
+             * دست بعدی را شروع کرده باشد.
+             */
+            await refreshGame();
+
+            if (
+                !currentGame ||
+                currentGame.round_finished === true
+            ) {
+
+                showMessage(
+                    error.message,
+                    "error"
+                );
+            }
+
+        } finally {
+
+            button.disabled = false;
+        }
+    }
+
+
+    /*
+     * نام بازیکن
+     */
+    function getPlayerName(
+        playerId,
+        game
+    ) {
+
+        if (!playerId) {
+            return "نامشخص";
+        }
+
+
+        const players =
+            game.players || [];
+
+        if (Array.isArray(players)) {
+
+            const player =
+                players.find(
+                    p =>
+                        String(
+                            p.user_id
+                        ) ===
+                        String(playerId)
+                );
+
+            if (player) {
+
+                return (
+                    player.username ||
+                    player.name ||
+                    player.user_id
+                );
+            }
+        }
+
+
+        if (
+            String(playerId) ===
+            String(userId)
+        ) {
+
+            return username ||
+                "شما";
+        }
+
+
+        return String(playerId);
+    }
+
+
+    /*
+     * خروج
+     */
+    function leaveRoom() {
+
+        stopRoomPolling();
+        stopGamePolling();
+
+        roomId = null;
+
+        localStorage.removeItem(
+            "domino_room_id"
+        );
+
+        showScreen("lobby");
+    }
+
+
+    /*
+     * HTML امن
+     */
+    function escapeHtml(value) {
+
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+
+    /*
+     * بازیابی اتاق قبلی
+     */
+    async function restorePreviousRoom() {
+
+        const saved =
+            localStorage.getItem(
+                "domino_room_id"
+            );
+
+        if (!saved) {
+            return;
+        }
+
+        roomId = saved;
+
+        try {
+
+            const data =
+                await apiRequest(
+                    `${API}/rooms/${encodeURIComponent(roomId)}`
+                );
+
+            currentRoom = data;
+
+            const started =
+                data.is_started === true ||
+                data.game_started === true;
+
+            if (started) {
+
+                showScreen(
+                    "gameScreen"
+                );
+
+                startGamePolling();
+
+            } else {
+
+                showScreen(
+                    "waiting"
+                );
+
+                startRoomPolling();
+            }
+
+        } catch (error) {
+
+            localStorage.removeItem(
+                "domino_room_id"
+            );
+
+            roomId = null;
+
+            showScreen("lobby");
+        }
+    }
+
+
+    /*
+     * شروع
+     */
+    initializeUser();
+
+    checkForActiveRoom();
+
+    restorePreviousRoom();
+
+</script>
+
+</body>
+</html>
